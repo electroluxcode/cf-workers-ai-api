@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>示例 — CF Neural Gate</title>
+  <link rel="stylesheet" href="css/theme.css"/>
+</head>
+<body class="chat-page">
+  <header class="topbar">
+    <div class="logo"><span class="logo-light">CF</span> <span class="logo-accent">Neural</span></div>
+    <button type="button" class="menu-toggle" aria-label="打开菜单" aria-expanded="false"><span aria-hidden="true">☰</span></button>
+    <nav class="nav" aria-label="主导航">
+      <a href="index.html">主页</a>
+      <a href="docs.html">文档</a>
+      <a href="demo.html" class="active">示例</a>
+    </nav>
+    <div class="topbar-end">
+      <div class="token-field">
+        <span>TOKEN</span>
+        <input type="text" data-token-input placeholder="access token" autocomplete="off" aria-label="Access token"/>
+      </div>
+    </div>
+  </header>
+
+  <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+    <div class="mobile-menu-head">
+      <div class="logo"><span class="logo-light">CF</span> <span class="logo-accent">Neural</span></div>
+      <button type="button" class="menu-close" aria-label="关闭菜单">✕</button>
+    </div>
+    <nav class="mobile-nav" aria-label="移动端导航">
+      <a href="index.html">主页</a>
+      <a href="docs.html">文档</a>
+      <a href="demo.html" class="active">示例</a>
+    </nav>
+    <div class="mobile-menu-foot">
+      <label for="apikey-mobile">ACCESS TOKEN</label>
+      <input id="apikey-mobile" type="text" data-token-input placeholder="your access token" autocomplete="off"/>
+    </div>
+  </div>
+
+  <main class="chat-page-wrap">
+    <div class="chat-layout">
+      <div class="chat-toolbar">
+        <div class="segments">
+          <button type="button" class="seg active" data-mode="text-to-image">文字生图</button>
+          <button type="button" class="seg" data-mode="text-generation">文本生成</button>
+        </div>
+        <div class="select-wrap chat-model-select">
+          <select id="modelSelect" aria-label="Model"><option>加载中…</option></select>
+        </div>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-empty">
+          <p>开始对话</p>
+          <p>选择任务类型与模型，在下方输入提示词</p>
+        </div>
+      </div>
+
+      <footer class="chat-composer">
+        <textarea id="promptInput" rows="1" placeholder="描述你想生成的图片…" aria-label="Prompt"></textarea>
+        <button type="button" id="runBtn" class="chat-send" aria-label="发送">发送</button>
+      </footer>
+    </div>
+  </main>
+
+  <script type="module" src="js/demo.js"></script>
+</body>
+</html>

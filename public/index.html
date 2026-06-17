@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>CF Neural Gate</title>
+  <link rel="stylesheet" href="css/theme.css"/>
+</head>
+<body class="home-page">
+  <header class="topbar">
+    <div class="logo"><span class="logo-light">CF</span> <span class="logo-accent">Neural</span></div>
+    <button type="button" class="menu-toggle" aria-label="打开菜单" aria-expanded="false"><span aria-hidden="true">☰</span></button>
+    <nav class="nav" aria-label="主导航">
+      <a href="index.html" class="active">主页</a>
+      <a href="docs.html">文档</a>
+      <a href="demo.html">示例</a>
+    </nav>
+    <div class="topbar-end">
+      <div class="token-field">
+        <span>TOKEN</span>
+        <input type="text" data-token-input placeholder="access token" autocomplete="off" aria-label="Access token"/>
+      </div>
+    </div>
+  </header>
+
+  <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+    <div class="mobile-menu-head">
+      <div class="logo"><span class="logo-light">CF</span> <span class="logo-accent">Neural</span></div>
+      <button type="button" class="menu-close" aria-label="关闭菜单">✕</button>
+    </div>
+    <nav class="mobile-nav" aria-label="移动端导航">
+      <a href="index.html" class="active">主页</a>
+      <a href="docs.html">文档</a>
+      <a href="demo.html">示例</a>
+    </nav>
+    <div class="mobile-menu-foot">
+      <label for="apikey-mobile">ACCESS TOKEN</label>
+      <input id="apikey-mobile" type="text" data-token-input placeholder="your access token" autocomplete="off"/>
+    </div>
+  </div>
+
+  <main class="hero-wrap">
+    <section class="hero">
+      <div class="hero-content">
+        <div class="status-badge">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>网关在线</span>
+          <span class="status-ver">SYS_v1.0</span>
+        </div>
+
+        <h1 class="hero-title">
+          <span class="hero-line">聚合 80 种 AI 模型</span>
+          <span class="hero-line accent">一站式 AI 生成网关</span>
+        </h1>
+
+        <p class="hero-desc">
+          基于 Cloudflare Workers AI 的免费 API。文生图、文本生成、嵌入向量——部署至 Cloudflare Worker 并绑定 Workers AI 后，在 Dashboard 环境变量中配置 <code>API_KEY</code> 作为访问凭证。
+        </p>
+
+        <div class="hero-tags">
+          <span class="tag">• WORKERS_AI</span>
+          <span class="tag">• ZERO_CONFIG</span>
+          <span class="tag">• CORS_READY</span>
+        </div>
+
+        <div class="hero-actions">
+          <a href="demo.html" class="btn-primary">示例 →</a>
+          <a href="docs.html" class="btn-ghost">文档</a>
+          <a href="https://github.com/electroluxcode/cf-proxy" class="btn-ghost" target="_blank" rel="noopener">部署指南</a>
+        </div>
+
+        <div class="hero-stats">
+          <div class="stat">
+            <strong>80+</strong>
+            <span>模型数量</span>
+          </div>
+          <div class="stat">
+            <strong>10,000</strong>
+            <span>每日免费额度</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="visual-frame">
+          <span class="visual-label tl">[GATE_PREVIEW]</span>
+          <span class="visual-label tr">LAT: 40.22</span>
+          <span class="visual-label bl">RENDER_ENGINE: ACTIVE</span>
+          <span class="visual-label br"><span class="status-dot sm"></span> SIGNAL_STABLE</span>
+
+          <div class="orb-scene">
+            <canvas id="heroCanvas" class="hero-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initShell } from './js/common.js';
+    import { initHeroVisual } from './js/hero-visual.js';
+    initShell();
+    initHeroVisual();
+  </script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>文档 — CF Neural Gate</title>
+  <link rel="stylesheet" href="css/theme.css"/>
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo"><span class="logo-light">CF</span> <span class="logo-accent">Neural</span></div>
+    <button type="button" class="menu-toggle" aria-label="打开菜单" aria-expanded="false"><span aria-hidden="true">☰</span></button>
+    <nav class="nav" aria-label="主导航">
+      <a href="index.html">主页</a>
+      <a href="docs.html" class="active">文档</a>
+      <a href="demo.html">示例</a>
+    </nav>
+    <div class="topbar-end">
+      <div class="token-field">
+        <span>TOKEN</span>
+        <input type="text" data-token-input placeholder="access token" autocomplete="off" aria-label="Access token"/>
+      </div>
+    </div>
+  </header>
+
+  <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+    <div class="mobile-menu-head">
+      <div class="logo"><span class="logo-light">CF</span> <span class="logo-accent">Neural</span></div>
+      <button type="button" class="menu-close" aria-label="关闭菜单">✕</button>
+    </div>
+    <nav class="mobile-nav" aria-label="移动端导航">
+      <a href="index.html">主页</a>
+      <a href="docs.html" class="active">文档</a>
+      <a href="demo.html">示例</a>
+    </nav>
+    <div class="mobile-menu-foot">
+      <label for="apikey-mobile">ACCESS TOKEN</label>
+      <input id="apikey-mobile" type="text" data-token-input placeholder="your access token" autocomplete="off"/>
+    </div>
+  </div>
+
+  <main class="page-wrap">
+    <h1 class="page-title">API 文档</h1>
+    <p class="page-desc">在 Cloudflare Dashboard 部署 Worker 并绑定 Workers AI 后，于环境变量中设置 <code>API_KEY</code>；请求时携带 <code>Authorization: Bearer &lt;API_KEY&gt;</code>。</p>
+
+    <section class="doc-section">
+      <h2>路由</h2>
+      <ul>
+        <li><code>GET /health</code> — 健康检查</li>
+        <li><code>GET /models</code> — 模型列表，支持 <code>?type=text-generation</code></li>
+        <li><code>POST /generate</code> — 生成（需 Token）</li>
+      </ul>
+    </section>
+
+    <section class="doc-section">
+      <h2>POST /generate</h2>
+      <p>请求体 JSON：</p>
+      <ul>
+        <li><code>prompt</code> (string, 必填) — 输入提示词</li>
+        <li><code>model</code> (string) — 模型 ID，默认按 type 选取</li>
+        <li><code>type</code> — <code>text-to-image</code> | <code>text-generation</code> | …</li>
+        <li><code>stream</code> (boolean) — 文本流式输出</li>
+      </ul>
+      <pre id="curl-image">curl -X POST ORIGIN/generate \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"a cat","type":"text-to-image"}' \
+  -o out.jpg</pre>
+      <pre id="curl-text">curl -X POST ORIGIN/generate \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"explain react hooks in markdown","type":"text-generation"}'</pre>
+    </section>
+
+    <section class="doc-section">
+      <h2>模型</h2>
+      <p>完整目录见 <a href="https://developers.cloudflare.com/workers-ai/models/" target="_blank" rel="noopener">Cloudflare Workers AI Models</a>。本项目收录 80 个官方模型。</p>
+    </section>
+
+    <section class="doc-section">
+      <h2>本地开发</h2>
+      <p>使用 <code>npm run dev</code>（即 <code>wrangler dev --remote</code>）。若出现 <strong>503</strong>，多为 Worker 热重载或远程预览会话中断，刷新页面重试即可；POST 请求在重载期间不会自动重试。</p>
+      <pre>npm run dev</pre>
+      <p>纯本地 Miniflare（无远程 AI）可用 <code>npm run dev:local</code>，但 <code>/generate</code> 可能超时。</p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initShell, apiBase } from './js/common.js';
+    initShell();
+    const base = apiBase();
+    document.getElementById('curl-image').textContent =
+      document.getElementById('curl-image').textContent.replace(/ORIGIN/g, base);
+    document.getElementById('curl-text').textContent =
+      document.getElementById('curl-text').textContent.replace(/ORIGIN/g, base);
+  </script>
+</body>
+</html>
