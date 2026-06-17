@@ -1,6 +1,5 @@
-# 复制为 .dev.vars 后本地 wrangler dev 会自动加载
-# cp .dev.vars.example .dev.vars
+# 本项目无需服务端环境变量。
+# 用户/API 调用方通过请求头传入：
+#   Authorization: Bearer <Cloudflare API Token>
 #
-# API_KEY：部署 Worker 后在 Dashboard 环境变量中配置，作为 API 访问凭证
-
-API_KEY=local-test-key
+# 网页 Demo 在右上角 TOKEN 输入框填写，优先读 input，再读 localStorage。

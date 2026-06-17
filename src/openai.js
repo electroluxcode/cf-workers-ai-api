@@ -1,4 +1,5 @@
 import { resolveModel, getModelsByType } from "./models.js";
+import { cfAiRun } from "./cf-ai.js";
 
 const CHAT_TYPES = new Set(["text-generation", "summarization"]);
 
@@ -24,7 +25,7 @@ export function handleV1Models(request) {
   });
 }
 
-export async function handleChatCompletions(request, env) {
+export async function handleChatCompletions(request, userToken) {
   let body;
   try {
     body = await request.json();
@@ -59,12 +60,12 @@ export async function handleChatCompletions(request, env) {
 
   try {
     if (stream) {
-      const cfStream = await env.AI.run(model.id, { ...input, stream: true });
+      const cfStream = await cfAiRun(userToken, model.id, { ...input, stream: true });
       const streamBody = transformCfStreamToOpenAIChat(cfStream, { id, model: model.id, created });
       return sseResponse(streamBody);
     }
 
-    const result = await env.AI.run(model.id, input);
+    const result = await cfAiRun(userToken, model.id, input);
     const content = extractText(result);
 
     return json({
@@ -86,7 +87,7 @@ export async function handleChatCompletions(request, env) {
   }
 }
 
-export async function handleResponses(request, env) {
+export async function handleResponses(request, userToken) {
   let body;
   try {
     body = await request.json();
@@ -118,7 +119,7 @@ export async function handleResponses(request, env) {
 
   try {
     if (stream) {
-      const cfStream = await env.AI.run(model.id, { ...aiInput, stream: true });
+      const cfStream = await cfAiRun(userToken, model.id, { ...aiInput, stream: true });
       const streamBody = transformCfStreamToOpenAIResponses(cfStream, {
         respId,
         msgId,
@@ -128,7 +129,7 @@ export async function handleResponses(request, env) {
       return sseResponse(streamBody);
     }
 
-    const result = await env.AI.run(model.id, aiInput);
+    const result = await cfAiRun(userToken, model.id, aiInput);
     const text = extractText(result);
 
     return json({
@@ -153,7 +154,7 @@ export async function handleResponses(request, env) {
   }
 }
 
-export async function handleImageGenerations(request, env) {
+export async function handleImageGenerations(request, userToken) {
   let body;
   try {
     body = await request.json();
@@ -181,15 +182,11 @@ export async function handleImageGenerations(request, env) {
       form.append("prompt", prompt.trim());
       form.append("width", String(width));
       form.append("height", String(height));
-      const formResponse = new Response(form);
-      result = await env.AI.run(model.id, {
-        multipart: {
-          body: formResponse.body,
-          contentType: formResponse.headers.get("content-type"),
-        },
+      result = await cfAiRun(userToken, model.id, {
+        multipart: { body: form },
       });
     } else {
-      result = await env.AI.run(model.id, { prompt: prompt.trim() });
+      result = await cfAiRun(userToken, model.id, { prompt: prompt.trim() });
     }
 
     const b64 = imageToBase64(result);

@@ -13,12 +13,21 @@ function tokenInputs() {
   return document.querySelectorAll('[data-token-input]');
 }
 
+/** 优先读 input 框，其次 localStorage */
 export function getApiKey() {
   for (const input of tokenInputs()) {
     const v = input.value.trim();
     if (v) return v;
   }
   return localStorage.getItem(TOKEN_KEY) || '';
+}
+
+/** 从用户 input 组装 Authorization 请求头 */
+export function apiAuthHeaders(extra = {}) {
+  const headers = { ...extra };
+  const token = getApiKey();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
 }
 
 export function initTokenField() {

@@ -7,22 +7,45 @@
 ## 特性
 
 - 80 个 Workers AI 模型，支持文生图与文本生成
-- **Access Token** 需在 Cloudflare Worker 环境变量中配置 `API_KEY`（见下方说明）
+- **用户自带 Token**：调用方传入 Cloudflare API Token，Worker 代发 Workers AI 请求
 - 暗黑赛博朋克 UI（Orbitron + JetBrains Mono）
 - 零配置 Fork 部署
 - CORS 支持
 
-## Access Token 说明
+## 凭证说明
 
-`API_KEY` 是 Worker 的访问凭证，需在 Cloudflare 完成 Worker 部署与 Workers AI 绑定后配置：
-
-1. 本地：写入 `.dev.vars`（参考 `.dev.vars.example`）
-2. 线上：Cloudflare Dashboard → Worker → **Settings → Variables** → 添加 `API_KEY`
-
-客户端请求时在 Header 带上：
+用户/API 调用方只需传入 **Cloudflare API Token**：
 
 ```
-Authorization: Bearer <你在 Dashboard 配置的 API_KEY>
+Authorization: Bearer <Cloudflare API Token>
+```
+
+### 架构
+
+```
+网页 Demo / API 调用方
+  └─ input 优先读取 Token → Authorization 请求头
+       ↓
+Worker 读取请求头，自动解析 Account ID，转发 Workers AI REST API
+```
+
+Worker 不读 env 密钥；Account ID 由 Token 自动解析（`GET /accounts`），**用户无需填写**。
+
+### 用户如何获取 Token
+
+Cloudflare Dashboard → **My Profile → API Tokens → Create Token**（需 Workers AI 权限）
+
+### 网页 Demo
+
+右上角 **TOKEN** 输入框填写；`getApiKey()` 优先读 input，再读 localStorage，经 `apiAuthHeaders()` 放入 `Authorization`。
+
+### API 调用示例
+
+```bash
+curl -X POST https://<worker>/v1/chat/completions \
+  -H "Authorization: Bearer $CF_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"@cf/meta/llama-3.1-8b-instruct-fast","messages":[{"role":"user","content":"hi"}],"stream":true}'
 ```
 
 ## 快速部署
@@ -32,19 +55,13 @@ Authorization: Bearer <你在 Dashboard 配置的 API_KEY>
 1. Fork 本仓库到你的 GitHub
 2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
 3. 进入 **Workers & Pages** → **Create application** → 连接 GitHub 仓库
-4. 部署完成后，在 Worker **Settings → Variables** 添加：
-   - `API_KEY` = 你的密钥
-5. 在 **Settings → Bindings** 添加 AI Binding：
-   - Variable name: `AI`
-   - Service: **Workers AI**
-6. 访问 `https://<worker-name>.<account>.workers.dev/` 打开 Demo
+4. 访问 `https://<worker-name>.<account>.workers.dev/` 打开 Demo，右上角填入 **Cloudflare API Token**
 
 ### 方法 2：Wrangler CLI
 
 ```bash
 npm install -g wrangler
 wrangler login
-wrangler secret put API_KEY
 wrangler deploy
 ```
 
@@ -56,7 +73,7 @@ wrangler deploy
 
 ```bash
 curl https://<your-worker>.workers.dev/v1/models \
-  -H "Authorization: Bearer your-api-key"
+  -H "Authorization: Bearer your-cloudflare-api-token"
 ```
 
 Demo 页使用 `GET /v1/models?type=text-generation` 按类型筛选模型。
@@ -65,7 +82,7 @@ Demo 页使用 `GET /v1/models?type=text-generation` 按类型筛选模型。
 
 ```bash
 curl -X POST https://<your-worker>.workers.dev/v1/chat/completions \
-  -H "Authorization: Bearer your-api-key" \
+  -H "Authorization: Bearer your-cloudflare-api-token" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "@cf/moonshotai/kimi-k2.7-code",
@@ -82,7 +99,7 @@ curl -X POST https://<your-worker>.workers.dev/v1/chat/completions \
 
 ```bash
 curl -X POST https://<your-worker>.workers.dev/v1/responses \
-  -H "Authorization: Bearer your-api-key" \
+  -H "Authorization: Bearer your-cloudflare-api-token" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "@cf/moonshotai/kimi-k2.7-code",
@@ -95,7 +112,7 @@ curl -X POST https://<your-worker>.workers.dev/v1/responses \
 
 ```bash
 curl -X POST https://<your-worker>.workers.dev/v1/images/generations \
-  -H "Authorization: Bearer your-api-key" \
+  -H "Authorization: Bearer your-cloudflare-api-token" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "A cute robot cooking breakfast",
@@ -113,7 +130,7 @@ curl -X POST https://<your-worker>.workers.dev/v1/images/generations \
 
 ```bash
 curl -X POST https://<your-worker>.workers.dev/v1/images/generations \
-  -H "Authorization: Bearer your-api-key" \
+  -H "Authorization: Bearer your-cloudflare-api-token" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "a cat on the beach",
@@ -130,7 +147,7 @@ curl -X POST https://<your-worker>.workers.dev/v1/images/generations \
 import OpenAI from "openai";
 
 const client = new OpenAI({
-  apiKey: process.env.API_KEY,
+  apiKey: process.env.CF_API_TOKEN,
   baseURL: "https://<your-worker>.workers.dev/v1",
 });
 
@@ -210,6 +227,7 @@ cf-workers-ai-api/
 ├── src/
 │   ├── worker.js           # API Worker
 │   ├── openai.js           # OpenAI 兼容层
+│   ├── cf-ai.js            # 用户 Token 转发 Workers AI REST API
 │   └── models.js           # 80 个模型目录
 ├── package.json            # npm run dev (--remote)
 └── wrangler.toml
@@ -258,7 +276,7 @@ Token 填写一次后会保存在 `localStorage`，三个页面共享。
 wrangler login
 npm run deploy
 # 浏览器打开 https://<你的域名或 workers.dev>/demo.html
-# 右上角填入 API_KEY，直接调用线上 /v1/chat/completions
+# 右上角填入 Cloudflare API Token，直接调用线上 /v1/chat/completions
 ```
 
 静态资源（字体、CSS、JS）已托管在 `public/`，**不依赖 Google Fonts**，国内可正常加载。
@@ -276,13 +294,13 @@ curl https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/v1/models
 
 # 流式对话
 curl -N -X POST "https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/v1/chat/completions" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Authorization: Bearer YOUR_CF_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model":"@cf/meta/llama-3.1-8b-instruct-fast","messages":[{"role":"user","content":"hi"}],"stream":true}'
 
 # 文生图
 curl -X POST "https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/v1/images/generations" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Authorization: Bearer YOUR_CF_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"prompt":"a cat","model":"@cf/black-forest-labs/flux-1-schnell"}'
 ```
@@ -293,7 +311,7 @@ curl -X POST "https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/
 
 - **部署后无法访问**：等待 DNS 传播，清除缓存或用无痕模式重试（cf-proxy FAQ 同类问题）
 - **自定义域名失败**：确认域名在 Cloudflare 托管、DNS 为橙色云朵
-- **仅 AI 接口失败**：检查 Workers AI 绑定与 `API_KEY` 是否一致；优先用线上环境验证
+- **仅 AI 接口失败**：检查 Token 权限（需 Workers AI）；优先用线上环境验证
 
 ## 参考
 

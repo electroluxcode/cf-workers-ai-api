@@ -19,7 +19,7 @@
     <div class="topbar-end">
       <div class="token-field">
         <span>TOKEN</span>
-        <input type="text" data-token-input placeholder="access token" autocomplete="off" aria-label="Access token"/>
+        <input type="text" data-token-input placeholder="API Token" autocomplete="off" aria-label="Cloudflare API Token"/>
       </div>
     </div>
   </header>
@@ -35,8 +35,8 @@
       <a href="demo.html">示例</a>
     </nav>
     <div class="mobile-menu-foot">
-      <label for="apikey-mobile">ACCESS TOKEN</label>
-      <input id="apikey-mobile" type="text" data-token-input placeholder="your access token" autocomplete="off"/>
+      <label for="apikey-mobile">API TOKEN</label>
+      <input id="apikey-mobile" type="text" data-token-input placeholder="API Token" autocomplete="off"/>
     </div>
   </div>
 
@@ -55,7 +55,7 @@
         </h1>
 
         <p class="hero-desc">
-          基于 Cloudflare Workers AI 的免费 API。文生图、文本生成、嵌入向量——部署至 Cloudflare Worker 并绑定 Workers AI 后，在 Dashboard 环境变量中配置 <code>API_KEY</code> 作为访问凭证。
+          基于 Cloudflare Workers AI 的 OpenAI 兼容网关。用户自带 API Token，Worker 零配置部署。
         </p>
 
         <div class="hero-tags">

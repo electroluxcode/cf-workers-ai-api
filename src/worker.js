@@ -19,54 +19,45 @@ export default {
     }
 
     if (url.pathname === "/v1/models" && request.method === "GET") {
-      const authError = checkAuth(request, env);
-      if (authError) return cors(authError);
+      const auth = requireUserToken(request);
+      if (auth.error) return cors(auth.error);
       return cors(handleV1Models(request));
     }
 
     if (url.pathname === "/v1/chat/completions" && request.method === "POST") {
-      const authError = checkAuth(request, env);
-      if (authError) return cors(authError);
-      return cors(await handleChatCompletions(request, env));
+      const auth = requireUserToken(request);
+      if (auth.error) return cors(auth.error);
+      return cors(await handleChatCompletions(request, auth.token));
     }
 
     if (url.pathname === "/v1/responses" && request.method === "POST") {
-      const authError = checkAuth(request, env);
-      if (authError) return cors(authError);
-      return cors(await handleResponses(request, env));
+      const auth = requireUserToken(request);
+      if (auth.error) return cors(auth.error);
+      return cors(await handleResponses(request, auth.token));
     }
 
     if (url.pathname === "/v1/images/generations" && request.method === "POST") {
-      const authError = checkAuth(request, env);
-      if (authError) return cors(authError);
-      return cors(await handleImageGenerations(request, env));
+      const auth = requireUserToken(request);
+      if (auth.error) return cors(auth.error);
+      return cors(await handleImageGenerations(request, auth.token));
     }
 
     return env.ASSETS.fetch(request);
   },
 };
 
-function checkAuth(request, env) {
+function requireUserToken(request) {
   const auth = request.headers.get("Authorization");
   if (!auth?.startsWith("Bearer ")) {
-    return openaiError("Missing Authorization header", 401, "invalid_api_key");
+    return { error: openaiError("Missing Authorization header", 401, "invalid_api_key") };
   }
 
   const token = auth.slice(7).trim();
   if (!token) {
-    return openaiError("Incorrect API key provided", 401, "invalid_api_key");
+    return { error: openaiError("Incorrect API key provided", 401, "invalid_api_key") };
   }
 
-  const apiKey = env.API_KEY;
-  if (!apiKey) {
-    return openaiError("API_KEY is not configured on the server", 500, "server_error");
-  }
-
-  if (token !== apiKey) {
-    return openaiError("Incorrect API key provided", 401, "invalid_api_key");
-  }
-
-  return null;
+  return { token };
 }
 
 function json(data, status = 200) {

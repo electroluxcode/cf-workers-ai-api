@@ -1,4 +1,4 @@
-import { toast, getApiKey, initShell, apiUrl } from './common.js';
+import { toast, getApiKey, apiAuthHeaders, initShell, apiUrl } from './common.js';
 
 let mode = 'text-to-image';
 let conversation = [];
@@ -14,15 +14,14 @@ function fillSelect(select, models) {
 
 async function loadModels() {
   const select = document.getElementById('modelSelect');
-  const key = getApiKey();
-  if (!key) {
-    select.innerHTML = '<option value="">请先填写 Token</option>';
+  if (!getApiKey()) {
+    select.innerHTML = '<option value="">请先填写 Cloudflare API Token</option>';
     return;
   }
 
   try {
     const res = await fetch(apiUrl(`/v1/models?type=${mode}`), {
-      headers: { Authorization: 'Bearer ' + key },
+      headers: apiAuthHeaders(),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -119,16 +118,6 @@ function createStreamingTextMessage(modelName) {
   return wrap.querySelector('.msg-text-body');
 }
 
-function appendTextMessage(md, modelName) {
-  const wrap = document.createElement('div');
-  wrap.className = 'msg msg-assistant msg-text';
-  wrap.innerHTML = `
-    <div class="msg-text-body">${renderMarkdown(md)}</div>
-    <small class="msg-model">${modelName}</small>`;
-  chatMessages().appendChild(wrap);
-  scrollToBottom();
-}
-
 async function parseOpenAIStream(res, onDelta) {
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -164,13 +153,10 @@ async function parseOpenAIStream(res, onDelta) {
   return fullText;
 }
 
-async function generateImage(prompt, model, key) {
+async function generateImage(prompt, model) {
   const res = await fetch(apiUrl('/v1/images/generations'), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + key,
-    },
+    headers: apiAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ prompt, model, size: '1024x1024' }),
   });
 
@@ -187,15 +173,12 @@ async function generateImage(prompt, model, key) {
   appendImageMessage(url, model);
 }
 
-async function generateTextStream(prompt, model, key) {
+async function generateTextStream(prompt, model) {
   conversation.push({ role: 'user', content: prompt });
 
   const res = await fetch(apiUrl('/v1/chat/completions'), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + key,
-    },
+    headers: apiAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
       model,
       messages: conversation,
@@ -221,11 +204,10 @@ async function generateTextStream(prompt, model, key) {
 async function runGenerate() {
   const prompt = promptInput().value.trim();
   const model = document.getElementById('modelSelect').value;
-  const key = getApiKey();
   const btn = document.getElementById('runBtn');
 
   if (!prompt) return toast('请输入提示词');
-  if (!key) return toast('请在右上角填写 Token');
+  if (!getApiKey()) return toast('请在右上角填写 Cloudflare API Token');
   if (!model) return toast('请选择模型');
 
   appendUserMessage(prompt);
@@ -237,9 +219,9 @@ async function runGenerate() {
 
   try {
     if (mode === 'text-to-image') {
-      await generateImage(prompt, model, key);
+      await generateImage(prompt, model);
     } else {
-      await generateTextStream(prompt, model, key);
+      await generateTextStream(prompt, model);
     }
   } catch (err) {
     toast(err.message);

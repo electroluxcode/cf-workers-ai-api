@@ -19,7 +19,7 @@
     <div class="topbar-end">
       <div class="token-field">
         <span>TOKEN</span>
-        <input type="text" data-token-input placeholder="access token" autocomplete="off" aria-label="Access token"/>
+        <input type="text" data-token-input placeholder="API Token" autocomplete="off" aria-label="Cloudflare API Token"/>
       </div>
     </div>
   </header>
@@ -35,14 +35,14 @@
       <a href="demo.html">示例</a>
     </nav>
     <div class="mobile-menu-foot">
-      <label for="apikey-mobile">ACCESS TOKEN</label>
-      <input id="apikey-mobile" type="text" data-token-input placeholder="your access token" autocomplete="off"/>
+      <label for="apikey-mobile">API TOKEN</label>
+      <input id="apikey-mobile" type="text" data-token-input placeholder="API Token" autocomplete="off"/>
     </div>
   </div>
 
   <main class="page-wrap">
     <h1 class="page-title">API 文档</h1>
-    <p class="page-desc">OpenAI 兼容 API。部署 Worker 并绑定 Workers AI 后，于环境变量设置 <code>API_KEY</code>；请求时携带 <code>Authorization: Bearer &lt;API_KEY&gt;</code>。可与 OpenAI SDK、Vercel AI SDK 等配合，将 <code>baseURL</code> 指向本 Worker 的 <code>/v1</code> 前缀即可。</p>
+    <p class="page-desc">OpenAI 兼容 API，零服务端密钥。只需 <code>Authorization: Bearer &lt;Cloudflare API Token&gt;</code>；Demo 右上角 input 填写后自动放入 Header。Account ID 由 Worker 根据 Token 自动解析。</p>
 
     <section class="doc-section">
       <h2>路由（OpenAI 兼容）</h2>
@@ -104,7 +104,7 @@
       <pre>import OpenAI from "openai";
 
 const client = new OpenAI({
-  apiKey: process.env.API_KEY,
+  apiKey: process.env.CF_API_TOKEN,
   baseURL: "https://YOUR-WORKER.workers.dev/v1",
 });
 
