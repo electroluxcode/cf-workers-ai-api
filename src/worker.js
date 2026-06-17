@@ -19,34 +19,34 @@ export default {
     }
 
     if (url.pathname === "/v1/models" && request.method === "GET") {
-      const auth = requireUserToken(request);
+      const auth = readAuth(request);
       if (auth.error) return cors(auth.error);
       return cors(handleV1Models(request));
     }
 
     if (url.pathname === "/v1/chat/completions" && request.method === "POST") {
-      const auth = requireUserToken(request);
+      const auth = readAuth(request, { requireAccount: true });
       if (auth.error) return cors(auth.error);
-      return cors(await handleChatCompletions(request, auth.token, env));
+      return cors(await handleChatCompletions(request, auth));
     }
 
     if (url.pathname === "/v1/responses" && request.method === "POST") {
-      const auth = requireUserToken(request);
+      const auth = readAuth(request, { requireAccount: true });
       if (auth.error) return cors(auth.error);
-      return cors(await handleResponses(request, auth.token, env));
+      return cors(await handleResponses(request, auth));
     }
 
     if (url.pathname === "/v1/images/generations" && request.method === "POST") {
-      const auth = requireUserToken(request);
+      const auth = readAuth(request, { requireAccount: true });
       if (auth.error) return cors(auth.error);
-      return cors(await handleImageGenerations(request, auth.token, env));
+      return cors(await handleImageGenerations(request, auth));
     }
 
     return env.ASSETS.fetch(request);
   },
 };
 
-function requireUserToken(request) {
+function readAuth(request, { requireAccount = false } = {}) {
   const auth = request.headers.get("Authorization");
   if (!auth?.startsWith("Bearer ")) {
     return { error: openaiError("Missing Authorization header", 401, "invalid_api_key") };
@@ -57,7 +57,12 @@ function requireUserToken(request) {
     return { error: openaiError("Incorrect API key provided", 401, "invalid_api_key") };
   }
 
-  return { token };
+  const accountId = request.headers.get("CF-Account-Id")?.trim() || null;
+  if (requireAccount && !accountId) {
+    return { error: openaiError("Missing CF-Account-Id header", 401, "invalid_request_error") };
+  }
+
+  return { token, accountId };
 }
 
 function json(data, status = 200) {
@@ -71,7 +76,7 @@ function cors(response) {
   const headers = new Headers(response.headers);
   headers.set("Access-Control-Allow-Origin", "*");
   headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, CF-Account-Id");
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

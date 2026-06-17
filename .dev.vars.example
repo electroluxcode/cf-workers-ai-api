@@ -1,5 +1,6 @@
 # 本项目无需服务端环境变量。
 # 用户/API 调用方通过请求头传入：
 #   Authorization: Bearer <Cloudflare API Token>
+#   CF-Account-Id: <32 位 hex Account ID>（AI 接口必填）
 #
-# 网页 Demo 在右上角 TOKEN 输入框填写，优先读 input，再读 localStorage。
+# 网页 Demo 在右上角 ACCOUNT / TOKEN 输入框填写，优先读 input，再读 localStorage。

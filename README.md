@@ -7,45 +7,40 @@
 ## 特性
 
 - 80 个 Workers AI 模型，支持文生图与文本生成
-- **用户自带 Token**：调用方传入 Cloudflare API Token，Worker 代发 Workers AI 请求
+- **用户自带凭证**：调用方传入 Cloudflare API Token + Account ID，Worker 代发 REST 请求
 - 暗黑赛博朋克 UI（Orbitron + JetBrains Mono）
 - 零配置 Fork 部署
 - CORS 支持
 
 ## 凭证说明
 
-用户/API 调用方只需传入 **Cloudflare API Token**：
+Worker **只读请求头**，不读 env 配置：
 
-```
-Authorization: Bearer <Cloudflare API Token>
-```
+| Header | 必填 | 说明 |
+|--------|------|------|
+| `Authorization: Bearer <Token>` | 是 | Cloudflare API Token（需 Workers AI 权限） |
+| `CF-Account-Id: <Account ID>` | AI 接口必填 | 32 位 hex，见 Dashboard → Workers AI → Use REST API |
 
-### 架构
+### 获取 Account ID
 
-```
-网页 Demo / API 调用方
-  └─ input 优先读取 Token → Authorization 请求头
-       ↓
-Worker 读取请求头，自动解析 Account ID，转发 Workers AI REST API
-```
-
-Worker 不读 env 密钥；Account ID 优先从 Token 自动解析（`/accounts` 或 `/memberships`）。若 Token 仅有 Workers AI 权限（Dashboard 创建的 `cfut_` Token 常见情况），则回退到 Worker 绑定的 **Workers AI** 执行（需部署时启用 AI binding）。
-
-### 用户如何获取 Token
-
-Cloudflare Dashboard → **My Profile → API Tokens → Create Token**（需 Workers AI 权限）
+登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers AI** → 右侧 **Use REST API**，复制 Account ID（32 位十六进制，非纯数字）。
 
 ### 网页 Demo
 
-右上角 **TOKEN** 输入框填写；`getApiKey()` 优先读 input，再读 localStorage，经 `apiAuthHeaders()` 放入 `Authorization`。
+右上角 **ACCOUNT** / **TOKEN** 输入框 → `apiAuthHeaders()` 写入请求头（input 优先，再 localStorage）。
 
-### API 调用示例
+### API 示例
 
 ```bash
-curl -X POST https://<worker>/v1/chat/completions \
+export BASE=https://<worker>.workers.dev
+export CF_API_TOKEN=your-token
+export CF_ACCOUNT_ID=your-32-char-hex-account-id
+
+curl -X POST $BASE/v1/images/generations \
   -H "Authorization: Bearer $CF_API_TOKEN" \
+  -H "CF-Account-Id: $CF_ACCOUNT_ID" \
   -H "Content-Type: application/json" \
-  -d '{"model":"@cf/meta/llama-3.1-8b-instruct-fast","messages":[{"role":"user","content":"hi"}],"stream":true}'
+  -d '{"prompt":"a cat","model":"@cf/black-forest-labs/flux-1-schnell"}'
 ```
 
 ## 快速部署
@@ -55,7 +50,7 @@ curl -X POST https://<worker>/v1/chat/completions \
 1. Fork 本仓库到你的 GitHub
 2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
 3. 进入 **Workers & Pages** → **Create application** → 连接 GitHub 仓库
-4. 访问 `https://<worker-name>.<account>.workers.dev/` 打开 Demo，右上角填入 **Cloudflare API Token**
+4. 访问 `https://<worker-name>.<account>.workers.dev/` 打开 Demo，右上角填入 **Account ID** 与 **API Token**
 
 ### 方法 2：Wrangler CLI
 
@@ -76,13 +71,16 @@ curl https://<your-worker>.workers.dev/v1/models \
   -H "Authorization: Bearer your-cloudflare-api-token"
 ```
 
+`GET /v1/models` 只需 Token；生成类接口还需 `CF-Account-Id`。
+
 Demo 页使用 `GET /v1/models?type=text-generation` 按类型筛选模型。
 
 ### 对话补全（流式）
 
 ```bash
-curl -X POST https://<your-worker>.workers.dev/v1/chat/completions \
+curl -N -X POST https://<your-worker>.workers.dev/v1/chat/completions \
   -H "Authorization: Bearer your-cloudflare-api-token" \
+  -H "CF-Account-Id: your-account-id" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "@cf/moonshotai/kimi-k2.7-code",
@@ -98,8 +96,9 @@ curl -X POST https://<your-worker>.workers.dev/v1/chat/completions \
 ### Responses API（流式）
 
 ```bash
-curl -X POST https://<your-worker>.workers.dev/v1/responses \
+curl -N -X POST https://<your-worker>.workers.dev/v1/responses \
   -H "Authorization: Bearer your-cloudflare-api-token" \
+  -H "CF-Account-Id: your-account-id" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "@cf/moonshotai/kimi-k2.7-code",
@@ -113,6 +112,7 @@ curl -X POST https://<your-worker>.workers.dev/v1/responses \
 ```bash
 curl -X POST https://<your-worker>.workers.dev/v1/images/generations \
   -H "Authorization: Bearer your-cloudflare-api-token" \
+  -H "CF-Account-Id: your-account-id" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "A cute robot cooking breakfast",
@@ -131,6 +131,7 @@ curl -X POST https://<your-worker>.workers.dev/v1/images/generations \
 ```bash
 curl -X POST https://<your-worker>.workers.dev/v1/images/generations \
   -H "Authorization: Bearer your-cloudflare-api-token" \
+  -H "CF-Account-Id: your-account-id" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "a cat on the beach",
@@ -143,12 +144,23 @@ curl -X POST https://<your-worker>.workers.dev/v1/images/generations \
 
 ### OpenAI SDK 示例
 
+OpenAI SDK 默认只传 `Authorization`，需自定义 `fetch` 附加 `CF-Account-Id`：
+
 ```typescript
 import OpenAI from "openai";
 
+const accountId = process.env.CF_ACCOUNT_ID!;
 const client = new OpenAI({
   apiKey: process.env.CF_API_TOKEN,
   baseURL: "https://<your-worker>.workers.dev/v1",
+  fetch: (url, init) =>
+    fetch(url, {
+      ...init,
+      headers: {
+        ...Object.fromEntries(new Headers(init?.headers)),
+        "CF-Account-Id": accountId,
+      },
+    }),
 });
 
 const stream = await client.chat.completions.create({
@@ -222,14 +234,14 @@ cf-workers-ai-api/
 │   ├── standalone-demo.html # 离线独立示例
 │   ├── css/theme.css
 │   └── js/
-│       ├── common.js       # Token 共享、API 基址
+│       ├── common.js       # 凭证共享、API 基址
 │       └── demo.js         # 生成逻辑
 ├── src/
 │   ├── worker.js           # API Worker
 │   ├── openai.js           # OpenAI 兼容层
 │   ├── cf-ai.js            # 用户 Token 转发 Workers AI REST API
 │   └── models.js           # 80 个模型目录
-├── package.json            # npm run dev (--remote)
+├── package.json
 └── wrangler.toml
 ```
 
@@ -241,10 +253,10 @@ cf-workers-ai-api/
 npm install && npm run dev
 ```
 
-Token 填写一次后会保存在 `localStorage`，三个页面共享。
+Account ID 与 Token 填写一次后会保存在 `localStorage`，三个页面共享。
 
-- **PC 端**：在页面右上角 **TOKEN** 输入框填写
-- **移动端**：点击右上角 ☰ 打开侧边栏，在底部 **ACCESS TOKEN** 填写
+- **PC 端**：右上角 **ACCOUNT** / **TOKEN** 输入框
+- **移动端**：点击 ☰ 打开侧边栏，底部填写 **ACCOUNT ID** / **API TOKEN**
 
 ## 国内访问说明
 
@@ -268,7 +280,7 @@ Token 填写一次后会保存在 `localStorage`，三个页面共享。
 |------|------|------|
 | `wrangler login` 失败 | 无法访问 `dash.cloudflare.com` / `api.cloudflare.com` | 使用稳定网络或代理后再登录 |
 | `npm run dev` 页面 pending | 远程预览需连接 Cloudflare | 先 `npm run deploy`，用**线上地址**调试 |
-| `POST /v1/*` 超时 / 503 | Workers AI 远程绑定在本地易超时 | **AI 请求请走线上 Worker**，本地只调 UI |
+| `POST /v1/*` 超时 / 503 | 本地 Worker 转发 Cloudflare REST 易超时 | **AI 请求请走线上 Worker**，本地只调 UI |
 
 本地调试 AI 的推荐流程：
 
@@ -276,7 +288,7 @@ Token 填写一次后会保存在 `localStorage`，三个页面共享。
 wrangler login
 npm run deploy
 # 浏览器打开 https://<你的域名或 workers.dev>/demo.html
-# 右上角填入 Cloudflare API Token，直接调用线上 /v1/chat/completions
+# 右上角填入 Account ID 与 API Token，直接调用线上 /v1/chat/completions
 ```
 
 静态资源（字体、CSS、JS）已托管在 `public/`，**不依赖 Google Fonts**，国内可正常加载。
@@ -290,17 +302,20 @@ npm run deploy
 curl https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/health
 
 # 模型列表
-curl https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/v1/models
+curl https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/v1/models \
+  -H "Authorization: Bearer YOUR_CF_API_TOKEN"
 
 # 流式对话
 curl -N -X POST "https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/v1/chat/completions" \
   -H "Authorization: Bearer YOUR_CF_API_TOKEN" \
+  -H "CF-Account-Id: YOUR_CF_ACCOUNT_ID" \
   -H "Content-Type: application/json" \
   -d '{"model":"@cf/meta/llama-3.1-8b-instruct-fast","messages":[{"role":"user","content":"hi"}],"stream":true}'
 
 # 文生图
 curl -X POST "https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/v1/images/generations" \
   -H "Authorization: Bearer YOUR_CF_API_TOKEN" \
+  -H "CF-Account-Id: YOUR_CF_ACCOUNT_ID" \
   -H "Content-Type: application/json" \
   -d '{"prompt":"a cat","model":"@cf/black-forest-labs/flux-1-schnell"}'
 ```
@@ -311,7 +326,7 @@ curl -X POST "https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/
 
 - **部署后无法访问**：等待 DNS 传播，清除缓存或用无痕模式重试（cf-proxy FAQ 同类问题）
 - **自定义域名失败**：确认域名在 Cloudflare 托管、DNS 为橙色云朵
-- **仅 AI 接口失败**：检查 Token 权限（需 Workers AI）；优先用线上环境验证
+- **仅 AI 接口失败**：检查 Token 权限（需 Workers AI）与 Account ID（32 位 hex）；优先用线上环境验证
 
 ## 参考
 

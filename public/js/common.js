@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'cf-workers-ai-api-token';
+const ACCOUNT_KEY = 'cf-workers-ai-api-account-id';
 
 export function toast(msg) {
   const el = document.createElement('div');
@@ -13,7 +14,11 @@ function tokenInputs() {
   return document.querySelectorAll('[data-token-input]');
 }
 
-/** 优先读 input 框，其次 localStorage */
+function accountInputs() {
+  return document.querySelectorAll('[data-account-input]');
+}
+
+/** 优先读 input，其次 localStorage */
 export function getApiKey() {
   for (const input of tokenInputs()) {
     const v = input.value.trim();
@@ -22,30 +27,37 @@ export function getApiKey() {
   return localStorage.getItem(TOKEN_KEY) || '';
 }
 
-/** 从用户 input 组装 Authorization 请求头 */
+/** 优先读 input，其次 localStorage */
+export function getAccountId() {
+  for (const input of accountInputs()) {
+    const v = input.value.trim();
+    if (v) return v;
+  }
+  return localStorage.getItem(ACCOUNT_KEY) || '';
+}
+
+/** 组装请求头，与 worker readAuth 对应 */
 export function apiAuthHeaders(extra = {}) {
   const headers = { ...extra };
   const token = getApiKey();
+  const accountId = getAccountId();
   if (token) headers.Authorization = `Bearer ${token}`;
+  if (accountId) headers['CF-Account-Id'] = accountId;
   return headers;
 }
 
-export function initTokenField() {
-  const inputs = tokenInputs();
+function initSyncedField(inputs, storageKey) {
   if (!inputs.length) return;
-
-  const saved = localStorage.getItem(TOKEN_KEY) || '';
-
+  const saved = localStorage.getItem(storageKey) || '';
   const syncAll = (source) => {
     const v = source.value;
     inputs.forEach((input) => {
       if (input !== source) input.value = v;
     });
     const trimmed = v.trim();
-    if (trimmed) localStorage.setItem(TOKEN_KEY, trimmed);
-    else localStorage.removeItem(TOKEN_KEY);
+    if (trimmed) localStorage.setItem(storageKey, trimmed);
+    else localStorage.removeItem(storageKey);
   };
-
   inputs.forEach((input) => {
     input.value = saved;
     input.addEventListener('input', () => syncAll(input));
@@ -53,7 +65,14 @@ export function initTokenField() {
   });
 }
 
-/** 部署在子路径（如 example.com/api/）时也能正确解析 API 根地址 */
+export function initTokenField() {
+  initSyncedField(tokenInputs(), TOKEN_KEY);
+}
+
+export function initAccountField() {
+  initSyncedField(accountInputs(), ACCOUNT_KEY);
+}
+
 function deployRoot() {
   const p = window.location.pathname;
   if (p === '/' || p.endsWith('/index.html')) {
@@ -70,8 +89,7 @@ export function apiBase() {
     const v = node.value.replace(/\/$/, '');
     if (v && v !== 'YOUR_WORKER_URL') return v;
   }
-  const root = deployRoot();
-  return window.location.origin + root;
+  return window.location.origin + deployRoot();
 }
 
 export function apiUrl(path) {
@@ -105,5 +123,6 @@ export function initMobileMenu() {
 
 export function initShell() {
   initTokenField();
+  initAccountField();
   initMobileMenu();
 }

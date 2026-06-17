@@ -18,6 +18,10 @@
     </nav>
     <div class="topbar-end">
       <div class="token-field">
+        <span>ACCOUNT</span>
+        <input type="text" data-account-input placeholder="Account ID" autocomplete="off" aria-label="Cloudflare Account ID"/>
+      </div>
+      <div class="token-field">
         <span>TOKEN</span>
         <input type="text" data-token-input placeholder="API Token" autocomplete="off" aria-label="Cloudflare API Token"/>
       </div>
@@ -35,6 +39,8 @@
       <a href="demo.html">示例</a>
     </nav>
     <div class="mobile-menu-foot">
+      <label for="account-mobile">ACCOUNT ID</label>
+      <input id="account-mobile" type="text" data-account-input placeholder="Account ID" autocomplete="off"/>
       <label for="apikey-mobile">API TOKEN</label>
       <input id="apikey-mobile" type="text" data-token-input placeholder="API Token" autocomplete="off"/>
     </div>
@@ -42,7 +48,16 @@
 
   <main class="page-wrap">
     <h1 class="page-title">API 文档</h1>
-    <p class="page-desc">OpenAI 兼容 API，零服务端密钥。只需 <code>Authorization: Bearer &lt;Cloudflare API Token&gt;</code>；Demo 右上角 input 填写后自动放入 Header。Account ID 由 Worker 根据 Token 自动解析。</p>
+    <p class="page-desc">Worker 只读请求头：<code>Authorization: Bearer &lt;Token&gt;</code>（必填）、<code>CF-Account-Id</code>（AI 接口必填）。Demo 右上角 input 填写后自动放入 Header。</p>
+
+    <section class="doc-section">
+      <h2>凭证</h2>
+      <ul>
+        <li><code>Authorization: Bearer &lt;Token&gt;</code> — Cloudflare API Token，需 Workers AI 权限</li>
+        <li><code>CF-Account-Id: &lt;Account ID&gt;</code> — 32 位 hex；<code>GET /v1/models</code> 可不传，生成类接口必填</li>
+      </ul>
+      <p>Account ID 获取：Dashboard → <strong>Workers AI</strong> → 右侧 <strong>Use REST API</strong> 复制（非纯数字）。</p>
+    </section>
 
     <section class="doc-section">
       <h2>路由（OpenAI 兼容）</h2>
@@ -64,8 +79,9 @@
         <li><code>stream</code> — <code>true</code> 时返回 <code>text/event-stream</code></li>
         <li><code>temperature</code> / <code>max_tokens</code> — 可选</li>
       </ul>
-      <pre id="curl-chat">curl -X POST ORIGIN/v1/chat/completions \
+      <pre id="curl-chat">curl -N -X POST ORIGIN/v1/chat/completions \
   -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "CF-Account-Id: YOUR_ACCOUNT_ID" \
   -H "Content-Type: application/json" \
   -d '{"model":"@cf/meta/llama-3.1-8b-instruct-fast","messages":[{"role":"user","content":"hello"}],"stream":true}'</pre>
     </section>
@@ -73,8 +89,9 @@
     <section class="doc-section">
       <h2>POST /v1/responses</h2>
       <p>与 <a href="https://platform.openai.com/docs/api-reference/responses/create" target="_blank" rel="noopener">OpenAI Responses API</a> 兼容。流式时发送 <code>response.output_text.delta</code> 等事件。</p>
-      <pre id="curl-responses">curl -X POST ORIGIN/v1/responses \
+      <pre id="curl-responses">curl -N -X POST ORIGIN/v1/responses \
   -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "CF-Account-Id: YOUR_ACCOUNT_ID" \
   -H "Content-Type: application/json" \
   -d '{"model":"@cf/moonshotai/kimi-k2.7-code","input":"你好","stream":true}'</pre>
     </section>
@@ -89,11 +106,13 @@
       </ul>
       <pre id="curl-image">curl -X POST ORIGIN/v1/images/generations \
   -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "CF-Account-Id: YOUR_ACCOUNT_ID" \
   -H "Content-Type: application/json" \
   -d '{"model":"@cf/black-forest-labs/flux-1-schnell","prompt":"a cat"}' \
   | jq -r '.data[0].b64_json' | base64 -d > out.jpg</pre>
       <pre id="curl-flux2">curl -X POST ORIGIN/v1/images/generations \
   -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "CF-Account-Id: YOUR_ACCOUNT_ID" \
   -H "Content-Type: application/json" \
   -d '{"model":"@cf/black-forest-labs/flux-2-klein-4b","prompt":"a cat on the beach","size":"1024x1024"}' \
   | jq -r '.data[0].b64_json' | base64 -d > out.png</pre>
@@ -101,11 +120,21 @@
 
     <section class="doc-section">
       <h2>SDK 接入示例</h2>
+      <p>OpenAI SDK 需自定义 <code>fetch</code> 传入 <code>CF-Account-Id</code>：</p>
       <pre>import OpenAI from "openai";
 
+const accountId = process.env.CF_ACCOUNT_ID;
 const client = new OpenAI({
   apiKey: process.env.CF_API_TOKEN,
   baseURL: "https://YOUR-WORKER.workers.dev/v1",
+  fetch: (url, init) =>
+    fetch(url, {
+      ...init,
+      headers: {
+        ...Object.fromEntries(new Headers(init?.headers)),
+        "CF-Account-Id": accountId,
+      },
+    }),
 });
 
 const stream = await client.chat.completions.create({

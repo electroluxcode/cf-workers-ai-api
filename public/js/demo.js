@@ -1,4 +1,4 @@
-import { toast, getApiKey, apiAuthHeaders, initShell, apiUrl } from './common.js';
+import { toast, getApiKey, getAccountId, apiAuthHeaders, initShell, apiUrl } from './common.js';
 
 let mode = 'text-to-image';
 let conversation = [];
@@ -208,6 +208,7 @@ async function runGenerate() {
 
   if (!prompt) return toast('请输入提示词');
   if (!getApiKey()) return toast('请在右上角填写 Cloudflare API Token');
+  if (!getAccountId()) return toast('请在右上角填写 Cloudflare Account ID');
   if (!model) return toast('请选择模型');
 
   appendUserMessage(prompt);
@@ -244,7 +245,7 @@ function autoResizePrompt() {
 
 initShell();
 
-document.querySelectorAll('[data-token-input]').forEach((input) => {
+document.querySelectorAll('[data-token-input], [data-account-input]').forEach((input) => {
   input.addEventListener('change', loadModels);
 });
 
