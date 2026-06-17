@@ -4,7 +4,7 @@
  * 共 80 个官方模型，此处收录全部可用模型
  */
 
-/** @typedef {{ id: string, name: string, type: string, author: string, description: string, default?: boolean, deprecated?: boolean, beta?: boolean }} Model */
+/** @typedef {{ id: string, name: string, type: string, author: string, description: string, default?: boolean, deprecated?: boolean, beta?: boolean, multipart?: boolean }} Model */
 
 /** @type {Model[]} */
 export const MODELS = [
@@ -54,9 +54,9 @@ export const MODELS = [
   { id: "@cf/defog/sqlcoder-7b-2", name: "SQLCoder 7B", type: "text-generation", author: "Defog", description: "自然语言查 SQL", deprecated: true, beta: true },
 
   // ── Text-to-Image ──────────────────────────────────────────
-  { id: "@cf/black-forest-labs/flux-2-klein-9b", name: "FLUX.2 Klein 9B", type: "text-to-image", author: "Black Forest Labs", description: "超快蒸馏，生成与编辑统一" },
-  { id: "@cf/black-forest-labs/flux-2-klein-4b", name: "FLUX.2 Klein 4B", type: "text-to-image", author: "Black Forest Labs", description: "超快蒸馏文生图" },
-  { id: "@cf/black-forest-labs/flux-2-dev", name: "FLUX.2 Dev", type: "text-to-image", author: "Black Forest Labs", description: "高写实，多参考支持" },
+  { id: "@cf/black-forest-labs/flux-2-klein-9b", name: "FLUX.2 Klein 9B", type: "text-to-image", author: "Black Forest Labs", description: "超快蒸馏，生成与编辑统一", multipart: true },
+  { id: "@cf/black-forest-labs/flux-2-klein-4b", name: "FLUX.2 Klein 4B", type: "text-to-image", author: "Black Forest Labs", description: "超快蒸馏文生图", multipart: true },
+  { id: "@cf/black-forest-labs/flux-2-dev", name: "FLUX.2 Dev", type: "text-to-image", author: "Black Forest Labs", description: "高写实，多参考支持", multipart: true },
   { id: "@cf/black-forest-labs/flux-1-schnell", name: "FLUX.1 Schnell", type: "text-to-image", author: "Black Forest Labs", description: "快速文生图，适合实时预览", default: true },
   { id: "@cf/leonardo/lucid-origin", name: "Lucid Origin", type: "text-to-image", author: "Leonardo", description: "高 prompt 遵循，多样视觉风格" },
   { id: "@cf/leonardo/phoenix-1.0", name: "Phoenix 1.0", type: "text-to-image", author: "Leonardo", description: "精准 prompt 与文字渲染" },

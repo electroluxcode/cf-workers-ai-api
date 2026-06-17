@@ -62,7 +62,7 @@ async function handleGenerate(request, env) {
   try {
     switch (model.type) {
       case "text-to-image":
-        return await generateImage(env, model, inputText);
+        return await generateImage(env, model, inputText, body);
       case "text-generation":
       case "summarization":
         return await generateText(env, model, inputText, stream);
@@ -94,19 +94,41 @@ async function handleGenerate(request, env) {
   }
 }
 
-async function generateImage(env, model, prompt) {
-  const result = await env.AI.run(model.id, { prompt });
+async function generateImage(env, model, prompt, options = {}) {
+  let result;
 
+  if (model.multipart) {
+    const form = new FormData();
+    form.append("prompt", prompt);
+    form.append("width", String(options.width ?? 1024));
+    form.append("height", String(options.height ?? 1024));
+
+    const formResponse = new Response(form);
+    result = await env.AI.run(model.id, {
+      multipart: {
+        body: formResponse.body,
+        contentType: formResponse.headers.get("content-type"),
+      },
+    });
+  } else {
+    result = await env.AI.run(model.id, { prompt });
+  }
+
+  return imageResponseFromResult(result, model.id);
+}
+
+function imageResponseFromResult(result, modelId) {
   if (result instanceof ArrayBuffer || result instanceof Uint8Array) {
     return new Response(result, {
-      headers: { "Content-Type": "image/jpeg", "X-Model": model.id },
+      headers: { "Content-Type": "image/jpeg", "X-Model": modelId },
     });
   }
 
   if (result?.image) {
-    const binary = Uint8Array.from(atob(result.image), (c) => c.charCodeAt(0));
+    const b64 = String(result.image).replace(/^data:image\/\w+;base64,/, "");
+    const binary = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
     return new Response(binary, {
-      headers: { "Content-Type": "image/jpeg", "X-Model": model.id },
+      headers: { "Content-Type": "image/png", "X-Model": modelId },
     });
   }
 

@@ -61,6 +61,7 @@
         <li><code>model</code> (string) — 模型 ID，默认按 type 选取</li>
         <li><code>type</code> — <code>text-to-image</code> | <code>text-generation</code> | …</li>
         <li><code>stream</code> (boolean) — 文本流式输出</li>
+        <li><code>width</code> / <code>height</code> (number, 可选) — 文生图尺寸，仅 FLUX.2 生效，默认 1024</li>
       </ul>
       <pre id="curl-image">curl -X POST ORIGIN/generate \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -71,6 +72,26 @@
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"prompt":"explain react hooks in markdown","type":"text-generation"}'</pre>
+    </section>
+
+    <section class="doc-section">
+      <h2>FLUX.2 文生图</h2>
+      <p>
+        <a href="https://developers.cloudflare.com/workers-ai/models/flux-2-klein-4b/" target="_blank" rel="noopener">FLUX.2</a>
+        系列（Klein 4B / Klein 9B / Dev）在 Workers AI 侧要求 <code>multipart/form-data</code>，不能直接传 <code>{ prompt }</code>。
+        本 API 仍统一使用 JSON 调用，Worker 会自动转换为 multipart（<code>prompt</code>、<code>width</code>、<code>height</code>）。
+      </p>
+      <ul>
+        <li><code>@cf/black-forest-labs/flux-2-klein-4b</code></li>
+        <li><code>@cf/black-forest-labs/flux-2-klein-9b</code></li>
+        <li><code>@cf/black-forest-labs/flux-2-dev</code></li>
+      </ul>
+      <p>FLUX.1 Schnell 等其它文生图模型仍使用普通 JSON <code>prompt</code> 即可。</p>
+      <pre id="curl-flux2">curl -X POST ORIGIN/generate \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"a cat on the beach","type":"text-to-image","model":"@cf/black-forest-labs/flux-2-klein-4b","width":1024,"height":1024}' \
+  -o out.png</pre>
     </section>
 
     <section class="doc-section">
@@ -103,6 +124,8 @@
       document.getElementById('curl-image').textContent.replace(/ORIGIN/g, base);
     document.getElementById('curl-text').textContent =
       document.getElementById('curl-text').textContent.replace(/ORIGIN/g, base);
+    const flux2 = document.getElementById('curl-flux2');
+    if (flux2) flux2.textContent = flux2.textContent.replace(/ORIGIN/g, base);
   </script>
 </body>
 </html>
