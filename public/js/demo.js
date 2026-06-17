@@ -53,8 +53,10 @@ function clearEmpty() {
 }
 
 function scrollToBottom() {
-  const el = chatMessages();
-  el.scrollTop = el.scrollHeight;
+  requestAnimationFrame(() => {
+    const el = chatMessages();
+    if (el) el.scrollTop = el.scrollHeight;
+  });
 }
 
 function appendUserMessage(text) {
@@ -78,12 +80,15 @@ function appendTyping() {
 function appendImageMessage(url, modelName) {
   const wrap = document.createElement('div');
   wrap.className = 'msg msg-assistant msg-image';
-  wrap.innerHTML = `
-    <img src="${url}" alt="生成结果"/>
-    <div class="msg-image-foot">
-      <small>${modelName}</small>
-      <a href="${url}" download="output.jpg">下载</a>
-    </div>`;
+  const img = document.createElement('img');
+  img.alt = '生成结果';
+  img.src = url;
+  img.addEventListener('load', scrollToBottom);
+  wrap.appendChild(img);
+  const foot = document.createElement('div');
+  foot.className = 'msg-image-foot';
+  foot.innerHTML = `<small>${modelName}</small><a href="${url}" download="output.jpg">下载</a>`;
+  wrap.appendChild(foot);
   chatMessages().appendChild(wrap);
   scrollToBottom();
 }

@@ -628,7 +628,7 @@ pre {
 }
 
 .chat-messages {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 16px;
@@ -636,14 +636,15 @@ pre {
   flex-direction: column;
   gap: 12px;
   min-height: 0;
-  max-height: min(520px, calc(100vh - 52px - 200px));
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
-.chat-page-wrap.has-node .chat-messages {
-  max-height: min(520px, calc(100vh - 52px - 41px - 200px));
+.chat-messages > * {
+  flex-shrink: 0;
 }
 
 .chat-empty {
-  flex: 1;
+  flex: 1 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -689,6 +690,7 @@ pre {
 .chat-send:disabled { opacity: .45; cursor: not-allowed; }
 
 .msg {
+  flex-shrink: 0;
   max-width: 88%;
   font-size: 13px;
   line-height: 1.55;
@@ -727,7 +729,9 @@ pre {
 }
 .msg-image img {
   width: 100%;
+  height: auto;
   display: block;
+  object-fit: contain;
 }
 .msg-image-foot {
   display: flex;
