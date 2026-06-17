@@ -42,69 +42,94 @@
 
   <main class="page-wrap">
     <h1 class="page-title">API 文档</h1>
-    <p class="page-desc">在 Cloudflare Dashboard 部署 Worker 并绑定 Workers AI 后，于环境变量中设置 <code>API_KEY</code>；请求时携带 <code>Authorization: Bearer &lt;API_KEY&gt;</code>。</p>
+    <p class="page-desc">OpenAI 兼容 API。部署 Worker 并绑定 Workers AI 后，于环境变量设置 <code>API_KEY</code>；请求时携带 <code>Authorization: Bearer &lt;API_KEY&gt;</code>。可与 OpenAI SDK、Vercel AI SDK 等配合，将 <code>baseURL</code> 指向本 Worker 的 <code>/v1</code> 前缀即可。</p>
 
     <section class="doc-section">
-      <h2>路由</h2>
+      <h2>路由（OpenAI 兼容）</h2>
       <ul>
         <li><code>GET /health</code> — 健康检查</li>
-        <li><code>GET /models</code> — 模型列表，支持 <code>?type=text-generation</code></li>
-        <li><code>POST /generate</code> — 生成（需 Token）</li>
+        <li><code>GET /v1/models</code> — 模型列表，支持 <code>?type=text-generation</code></li>
+        <li><code>POST /v1/chat/completions</code> — 对话补全，支持 <code>stream: true</code> SSE</li>
+        <li><code>POST /v1/responses</code> — Responses API，支持 <code>stream: true</code></li>
+        <li><code>POST /v1/images/generations</code> — 文生图，返回 <code>b64_json</code></li>
       </ul>
     </section>
 
     <section class="doc-section">
-      <h2>POST /generate</h2>
-      <p>请求体 JSON：</p>
+      <h2>POST /v1/chat/completions</h2>
+      <p>与 <a href="https://platform.openai.com/docs/api-reference/chat/create" target="_blank" rel="noopener">OpenAI Chat Completions</a> 兼容。Workers AI 原生 SSE 会在网关层转换为 OpenAI chunk 格式。</p>
       <ul>
-        <li><code>prompt</code> (string, 必填) — 输入提示词</li>
-        <li><code>model</code> (string) — 模型 ID，默认按 type 选取</li>
-        <li><code>type</code> — <code>text-to-image</code> | <code>text-generation</code> | …</li>
-        <li><code>stream</code> (boolean) — 文本流式输出</li>
-        <li><code>width</code> / <code>height</code> (number, 可选) — 文生图尺寸，仅 FLUX.2 生效，默认 1024</li>
+        <li><code>model</code> — Workers AI 模型 ID，如 <code>@cf/meta/llama-3.1-8b-instruct-fast</code></li>
+        <li><code>messages</code> — <code>[{ role, content }]</code> 数组</li>
+        <li><code>stream</code> — <code>true</code> 时返回 <code>text/event-stream</code></li>
+        <li><code>temperature</code> / <code>max_tokens</code> — 可选</li>
       </ul>
-      <pre id="curl-image">curl -X POST ORIGIN/generate \
+      <pre id="curl-chat">curl -X POST ORIGIN/v1/chat/completions \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"a cat","type":"text-to-image"}' \
-  -o out.jpg</pre>
-      <pre id="curl-text">curl -X POST ORIGIN/generate \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"explain react hooks in markdown","type":"text-generation"}'</pre>
+  -d '{"model":"@cf/meta/llama-3.1-8b-instruct-fast","messages":[{"role":"user","content":"hello"}],"stream":true}'</pre>
     </section>
 
     <section class="doc-section">
-      <h2>FLUX.2 文生图</h2>
-      <p>
-        <a href="https://developers.cloudflare.com/workers-ai/models/flux-2-klein-4b/" target="_blank" rel="noopener">FLUX.2</a>
-        系列（Klein 4B / Klein 9B / Dev）在 Workers AI 侧要求 <code>multipart/form-data</code>，不能直接传 <code>{ prompt }</code>。
-        本 API 仍统一使用 JSON 调用，Worker 会自动转换为 multipart（<code>prompt</code>、<code>width</code>、<code>height</code>）。
-      </p>
-      <ul>
-        <li><code>@cf/black-forest-labs/flux-2-klein-4b</code></li>
-        <li><code>@cf/black-forest-labs/flux-2-klein-9b</code></li>
-        <li><code>@cf/black-forest-labs/flux-2-dev</code></li>
-      </ul>
-      <p>FLUX.1 Schnell 等其它文生图模型仍使用普通 JSON <code>prompt</code> 即可。</p>
-      <pre id="curl-flux2">curl -X POST ORIGIN/generate \
+      <h2>POST /v1/responses</h2>
+      <p>与 <a href="https://platform.openai.com/docs/api-reference/responses/create" target="_blank" rel="noopener">OpenAI Responses API</a> 兼容。流式时发送 <code>response.output_text.delta</code> 等事件。</p>
+      <pre id="curl-responses">curl -X POST ORIGIN/v1/responses \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"a cat on the beach","type":"text-to-image","model":"@cf/black-forest-labs/flux-2-klein-4b","width":1024,"height":1024}' \
-  -o out.png</pre>
+  -d '{"model":"@cf/moonshotai/kimi-k2.7-code","input":"你好","stream":true}'</pre>
+    </section>
+
+    <section class="doc-section">
+      <h2>POST /v1/images/generations</h2>
+      <p>与 OpenAI Images API 兼容。FLUX.2 模型会自动走 multipart，客户端仍用 JSON。</p>
+      <ul>
+        <li><code>prompt</code> — 必填</li>
+        <li><code>model</code> — 文生图模型 ID</li>
+        <li><code>size</code> — 如 <code>1024x1024</code>（FLUX.2 生效）</li>
+      </ul>
+      <pre id="curl-image">curl -X POST ORIGIN/v1/images/generations \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"@cf/black-forest-labs/flux-1-schnell","prompt":"a cat"}' \
+  | jq -r '.data[0].b64_json' | base64 -d > out.jpg</pre>
+      <pre id="curl-flux2">curl -X POST ORIGIN/v1/images/generations \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"@cf/black-forest-labs/flux-2-klein-4b","prompt":"a cat on the beach","size":"1024x1024"}' \
+  | jq -r '.data[0].b64_json' | base64 -d > out.png</pre>
+    </section>
+
+    <section class="doc-section">
+      <h2>SDK 接入示例</h2>
+      <pre>import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: process.env.API_KEY,
+  baseURL: "https://YOUR-WORKER.workers.dev/v1",
+});
+
+const stream = await client.chat.completions.create({
+  model: "@cf/moonshotai/kimi-k2.7-code",
+  messages: [{ role: "user", content: "hello" }],
+  stream: true,
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content ?? "");
+}</pre>
     </section>
 
     <section class="doc-section">
       <h2>模型</h2>
-      <p>完整目录见 <a href="https://developers.cloudflare.com/workers-ai/models/" target="_blank" rel="noopener">Cloudflare Workers AI Models</a>。本项目收录 80 个官方模型。</p>
+      <p>完整目录见 <a href="https://developers.cloudflare.com/workers-ai/models/" target="_blank" rel="noopener">Cloudflare Workers AI Models</a>。本项目收录 80 个官方模型。响应含 <code>cf_type</code>、<code>cf_name</code>、<code>cf_description</code> 扩展字段；Demo 页使用 <code>GET /v1/models?type=...</code> 筛选。</p>
     </section>
 
     <section class="doc-section">
       <h2>国内访问</h2>
       <p><code>*.workers.dev</code> 在国内可能较慢或不稳定。推荐在 Cloudflare Dashboard 为 Worker <strong>绑定自定义域名</strong>（域名需接入 Cloudflare DNS，保持橙色云朵代理）。步骤参考 <a href="https://github.com/electroluxcode/cf-proxy/blob/main/DEPLOY.md" target="_blank" rel="noopener">cf-proxy 部署指南</a>。</p>
       <ul>
-        <li><strong>本地 dev pending</strong>：Workers AI 需连接 Cloudflare，国内网络易超时；请 <code>npm run deploy</code> 后用线上地址调试 <code>/generate</code></li>
-        <li><strong>无法访问 workers.dev</strong>：可部署 <a href="https://github.com/electroluxcode/cf-proxy" target="_blank" rel="noopener">cf-proxy</a>，通过 <code>/proxy/&lt;你的-worker&gt;.workers.dev/...</code> 转发</li>
+        <li><strong>本地 dev pending</strong>：Workers AI 需连接 Cloudflare，国内网络易超时；请 <code>npm run deploy</code> 后用线上地址调试</li>
+        <li><strong>无法访问 workers.dev</strong>：可部署 <a href="https://github.com/electroluxcode/cf-proxy" target="_blank" rel="noopener">cf-proxy</a>，通过 <code>/proxy/&lt;你的-worker&gt;.workers.dev/v1/...</code> 转发</li>
         <li><strong>静态资源</strong>：字体与样式已本地化，不依赖 Google CDN</li>
       </ul>
       <pre id="curl-proxy">curl https://YOUR-PROXY.workers.dev/proxy/YOUR-API.workers.dev/health</pre>
@@ -112,7 +137,7 @@
 
     <section class="doc-section">
       <h2>本地开发</h2>
-      <p>使用 <code>npm run dev</code> 时 <code>/generate</code> 可能超时，详见项目根目录 <code>DEPLOY.md</code>。</p>
+      <p>使用 <code>npm run dev</code> 时 AI 请求可能超时，详见项目根目录 <code>DEPLOY.md</code>。</p>
     </section>
   </main>
 
@@ -120,12 +145,10 @@
     import { initShell, apiBase } from './js/common.js';
     initShell();
     const base = apiBase();
-    document.getElementById('curl-image').textContent =
-      document.getElementById('curl-image').textContent.replace(/ORIGIN/g, base);
-    document.getElementById('curl-text').textContent =
-      document.getElementById('curl-text').textContent.replace(/ORIGIN/g, base);
-    const flux2 = document.getElementById('curl-flux2');
-    if (flux2) flux2.textContent = flux2.textContent.replace(/ORIGIN/g, base);
+    for (const id of ['curl-chat', 'curl-responses', 'curl-image', 'curl-flux2', 'curl-proxy']) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = el.textContent.replace(/ORIGIN/g, base);
+    }
   </script>
 </body>
 </html>

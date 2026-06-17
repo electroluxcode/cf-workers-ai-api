@@ -50,49 +50,118 @@ wrangler deploy
 
 ## API 用法
 
+本 API 采用 **OpenAI 兼容** 路由，可直接配合 OpenAI SDK、Vercel AI SDK 等使用，将 `baseURL` 设为 `https://<your-worker>.workers.dev/v1`。
+
 ### 获取模型列表
 
 ```bash
-curl https://<your-worker>.workers.dev/models
+curl https://<your-worker>.workers.dev/v1/models \
+  -H "Authorization: Bearer your-api-key"
+```
+
+Demo 页使用 `GET /v1/models?type=text-generation` 按类型筛选模型。
+
+### 对话补全（流式）
+
+```bash
+curl -X POST https://<your-worker>.workers.dev/v1/chat/completions \
+  -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "@cf/moonshotai/kimi-k2.7-code",
+    "messages": [
+      {"role": "user", "content": "Explain React hooks in markdown"}
+    ],
+    "stream": true
+  }'
+```
+
+返回 OpenAI 标准 SSE：`data: {"choices":[{"delta":{"content":"..."}}]}`，结尾 `data: [DONE]`。
+
+### Responses API（流式）
+
+```bash
+curl -X POST https://<your-worker>.workers.dev/v1/responses \
+  -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "@cf/moonshotai/kimi-k2.7-code",
+    "input": "你好",
+    "stream": true
+  }'
 ```
 
 ### 文生图
 
-方式：
-
 ```bash
-curl -X POST https://<your-worker>.workers.dev/generate \
+curl -X POST https://<your-worker>.workers.dev/v1/images/generations \
   -H "Authorization: Bearer your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "A cute robot cooking breakfast",
-    "model": "@cf/black-forest-labs/flux-1-schnell",
-    "type": "text-to-image"
-  }' \
-  --output image.jpg
-```
-
-### 文本生成（Markdown 输出）
-
-```bash
-curl -X POST https://<your-worker>.workers.dev/generate \
-  -H "Authorization: Bearer your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Explain React hooks in markdown",
-    "model": "@cf/meta/llama-3.1-8b-instruct-fast",
-    "type": "text-generation"
+    "model": "@cf/black-forest-labs/flux-1-schnell"
   }'
 ```
 
-### 请求参数
+响应 JSON 含 `data[0].b64_json`，解码即为图片。
+
+### FLUX.2 文生图
+
+[FLUX.2](https://developers.cloudflare.com/workers-ai/models/flux-2-klein-4b/)（Klein 4B / Klein 9B / Dev）在 Cloudflare 侧必须使用 `multipart/form-data`。直接调用 Workers AI 时若只传 `{ prompt }` 会报错：`required properties at '/' are 'multipart'`。
+
+**本项目的 `/v1/images/generations` 仍用 JSON**，Worker 会自动转为 multipart：
+
+```bash
+curl -X POST https://<your-worker>.workers.dev/v1/images/generations \
+  -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "a cat on the beach",
+    "model": "@cf/black-forest-labs/flux-2-klein-4b",
+    "size": "1024x1024"
+  }'
+```
+
+`size` 格式为 `宽x高`，默认 `1024x1024`。FLUX.1 Schnell 等其它文生图模型不受影响。
+
+### OpenAI SDK 示例
+
+```typescript
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: process.env.API_KEY,
+  baseURL: "https://<your-worker>.workers.dev/v1",
+});
+
+const stream = await client.chat.completions.create({
+  model: "@cf/moonshotai/kimi-k2.7-code",
+  messages: [{ role: "user", content: "hello" }],
+  stream: true,
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content ?? "");
+}
+```
+
+### Chat Completions 请求参数
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `model` | string | 是 | Workers AI 模型 ID |
+| `messages` | array | 是 | `[{ role, content }]` |
+| `stream` | boolean | 否 | 流式 SSE（OpenAI 格式） |
+| `temperature` | number | 否 | 采样温度 |
+| `max_tokens` | number | 否 | 最大输出 token，默认 2048 |
+
+### Images 请求参数
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `prompt` | string | 是 | 输入提示词 |
 | `model` | string | 否 | 模型 ID，默认按 type 选取 |
-| `type` | string | 否 | `text-to-image` 或 `text-generation` |
-| `stream` | boolean | 否 | 文本流式输出（SSE） |
+| `size` | string | 否 | 如 `1024x1024`（FLUX.2） |
 
 ### 可用模型
 
@@ -108,7 +177,7 @@ curl -X POST https://<your-worker>.workers.dev/generate \
 | translation | 2 | IndicTrans2, M2M100 |
 | 其他 | 8 | 摘要、分类、图像理解、目标检测等 |
 
-`GET /models` 返回全部模型；`GET /models?type=text-generation` 按类型筛选。
+`GET /v1/models` 返回全部模型；`GET /v1/models?type=text-generation` 按类型筛选。响应含 `cf_type`、`cf_name`、`cf_description` 扩展字段供 UI 使用。
 
 可在 `src/models.js` 中维护模型目录。
 
@@ -118,9 +187,11 @@ curl -X POST https://<your-worker>.workers.dev/generate \
 |------|------|------|
 | `/` | GET | 主页 |
 | `/docs.html` | GET | API 文档 |
-| `/demo.html` | GET | 示例 playground |
-| `/models` | GET | 模型列表 |
-| `/generate` | POST | 生成（需 Token） |
+| `/demo.html` | GET | 示例 playground（流式对话 + 文生图） |
+| `/v1/models` | GET | 模型列表（OpenAI 格式） |
+| `/v1/chat/completions` | POST | 对话补全，支持流式 |
+| `/v1/responses` | POST | Responses API，支持流式 |
+| `/v1/images/generations` | POST | 文生图 |
 | `/health` | GET | 健康检查 |
 
 ## 项目结构
@@ -138,6 +209,7 @@ cf-workers-ai-api/
 │       └── demo.js         # 生成逻辑
 ├── src/
 │   ├── worker.js           # API Worker
+│   ├── openai.js           # OpenAI 兼容层
 │   └── models.js           # 80 个模型目录
 ├── package.json            # npm run dev (--remote)
 └── wrangler.toml
@@ -178,7 +250,7 @@ Token 填写一次后会保存在 `localStorage`，三个页面共享。
 |------|------|------|
 | `wrangler login` 失败 | 无法访问 `dash.cloudflare.com` / `api.cloudflare.com` | 使用稳定网络或代理后再登录 |
 | `npm run dev` 页面 pending | 远程预览需连接 Cloudflare | 先 `npm run deploy`，用**线上地址**调试 |
-| `POST /generate` 超时 / 503 | Workers AI 远程绑定在本地易超时 | **文生图等 AI 请求请走线上 Worker**，本地只调 UI |
+| `POST /v1/*` 超时 / 503 | Workers AI 远程绑定在本地易超时 | **AI 请求请走线上 Worker**，本地只调 UI |
 
 本地调试 AI 的推荐流程：
 
@@ -186,7 +258,7 @@ Token 填写一次后会保存在 `localStorage`，三个页面共享。
 wrangler login
 npm run deploy
 # 浏览器打开 https://<你的域名或 workers.dev>/demo.html
-# 右上角填入 API_KEY，直接调用线上 /generate
+# 右上角填入 API_KEY，直接调用线上 /v1/chat/completions
 ```
 
 静态资源（字体、CSS、JS）已托管在 `public/`，**不依赖 Google Fonts**，国内可正常加载。
@@ -200,14 +272,19 @@ npm run deploy
 curl https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/health
 
 # 模型列表
-curl https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/models
+curl https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/v1/models
 
-# 文生图（注意路径拼接）
-curl -X POST "https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/generate" \
+# 流式对话
+curl -N -X POST "https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/v1/chat/completions" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"a cat","type":"text-to-image"}' \
-  -o out.jpg
+  -d '{"model":"@cf/meta/llama-3.1-8b-instruct-fast","messages":[{"role":"user","content":"hi"}],"stream":true}'
+
+# 文生图
+curl -X POST "https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/v1/images/generations" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"a cat","model":"@cf/black-forest-labs/flux-1-schnell"}'
 ```
 
 也可在 `standalone-demo.html` 的 **NODE** 字段填入代理后的地址。

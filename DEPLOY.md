@@ -18,7 +18,7 @@ cp .dev.vars.example .dev.vars
 npm run dev
 ```
 
-默认使用 `wrangler dev --remote`，Worker 运行在 [Cloudflare 边缘](https://developers.cloudflare.com/workers/development-testing/)，Workers AI 与线上一致，可正常调用 `/generate`。
+默认使用 `wrangler dev --remote`，Worker 运行在 [Cloudflare 边缘](https://developers.cloudflare.com/workers/development-testing/)，Workers AI 与线上一致，可正常调用 `/v1/*` 接口。
 
 访问：
 
@@ -32,7 +32,7 @@ npm run dev
 npm run dev:local
 ```
 
-本地 Miniflare 代理 Workers AI 远程绑定时，生成请求可能在 ~75s 超时（[wrangler 已知问题](https://github.com/cloudflare/workers-sdk/issues/10857)）。仅适合调试静态页面和 `/models` 等非 AI 接口。
+本地 Miniflare 代理 Workers AI 远程绑定时，生成请求可能在 ~75s 超时（[wrangler 已知问题](https://github.com/cloudflare/workers-sdk/issues/10857)）。仅适合调试静态页面和 `/v1/models` 等非 AI 接口。
 
 ## 线上部署
 
@@ -57,13 +57,21 @@ export BASE=https://your-worker.workers.dev
 export API_KEY=your-token
 
 curl $BASE/health
-curl $BASE/models
+# 模型列表
+curl $BASE/v1/models -H "Authorization: Bearer $API_KEY"
 
-curl -X POST $BASE/generate \
+# 流式对话
+curl -N -X POST $BASE/v1/chat/completions \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"a cat","type":"text-to-image"}' \
-  -o test.jpg
+  -d '{"model":"@cf/meta/llama-3.1-8b-instruct-fast","messages":[{"role":"user","content":"hi"}],"stream":true}'
+
+# 文生图
+curl -X POST $BASE/v1/images/generations \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"a cat","model":"@cf/black-forest-labs/flux-1-schnell"}' \
+  | jq -r '.data[0].b64_json' | base64 -d > test.jpg
 ```
 
 ## 独立静态页面
@@ -80,7 +88,7 @@ npx serve public
 国内用户请优先阅读 [README · 国内访问说明](./README.md#国内访问说明)。要点：
 
 1. **绑定自定义域名**（参考 [cf-proxy DEPLOY.md](https://github.com/electroluxcode/cf-proxy/blob/main/DEPLOY.md)）— 比 `*.workers.dev` 更稳定
-2. **AI 调试走线上** — `npm run deploy` 后用线上 URL 测 `/generate`，本地 dev 易 pending/超时
+2. **AI 调试走线上** — `npm run deploy` 后用线上 URL 测 `/v1/chat/completions` 等，本地 dev 易 pending/超时
 3. **可选 cf-proxy** — 无法直连 workers.dev 时，用 cf-proxy 做 `/proxy/<你的-worker>.workers.dev/...` 转发
 
 ### 自定义域名（推荐）
@@ -99,7 +107,7 @@ wrangler login
 # 推荐：先部署，用线上地址调 AI
 npm run deploy
 
-# 本地仅适合调试静态页 /models（AI 可能超时）
+# 本地仅适合调试静态页 /v1/models（AI 可能超时）
 npm run dev
 ```
 

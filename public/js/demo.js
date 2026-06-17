@@ -1,22 +1,23 @@
 import { toast, getApiKey, initShell, apiUrl } from './common.js';
 
 let mode = 'text-to-image';
+let conversation = [];
 
 const chatMessages = () => document.getElementById('chatMessages');
 const promptInput = () => document.getElementById('promptInput');
 
 function fillSelect(select, models) {
   select.innerHTML = models.map(m =>
-    `<option value="${m.id}" title="${m.description.replace(/"/g, "'")}"${m.default ? ' selected' : ''}>${m.name}</option>`
+    `<option value="${m.id}" title="${(m.cf_description || '').replace(/"/g, "'")}"${m.cf_default ? ' selected' : ''}>${m.cf_name || m.id}</option>`
   ).join('');
 }
 
 async function loadModels() {
   try {
-    const res = await fetch(apiUrl('/models'));
+    const res = await fetch(apiUrl(`/v1/models?type=${mode}`));
     if (!res.ok) throw new Error('Failed to load models');
-    const { models } = await res.json();
-    fillSelect(document.getElementById('modelSelect'), models.filter(m => m.type === mode));
+    const { data: models } = await res.json();
+    fillSelect(document.getElementById('modelSelect'), models);
   } catch (err) {
     toast('模型加载失败: ' + err.message);
   }
@@ -24,6 +25,7 @@ async function loadModels() {
 
 function setMode(next) {
   mode = next;
+  conversation = [];
   document.querySelectorAll('.seg[data-mode]').forEach(el => {
     el.classList.toggle('active', el.dataset.mode === mode);
   });
@@ -87,10 +89,21 @@ function appendImageMessage(url, modelName) {
   wrap.appendChild(img);
   const foot = document.createElement('div');
   foot.className = 'msg-image-foot';
-  foot.innerHTML = `<small>${modelName}</small><a href="${url}" download="output.jpg">下载</a>`;
+  foot.innerHTML = `<small>${modelName}</small><a href="${url}" download="output.png">下载</a>`;
   wrap.appendChild(foot);
   chatMessages().appendChild(wrap);
   scrollToBottom();
+}
+
+function createStreamingTextMessage(modelName) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg msg-assistant msg-text';
+  wrap.innerHTML = `
+    <div class="msg-text-body"></div>
+    <small class="msg-model">${modelName}</small>`;
+  chatMessages().appendChild(wrap);
+  scrollToBottom();
+  return wrap.querySelector('.msg-text-body');
 }
 
 function appendTextMessage(md, modelName) {
@@ -101,6 +114,95 @@ function appendTextMessage(md, modelName) {
     <small class="msg-model">${modelName}</small>`;
   chatMessages().appendChild(wrap);
   scrollToBottom();
+}
+
+async function parseOpenAIStream(res, onDelta) {
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') continue;
+
+      try {
+        const chunk = JSON.parse(data);
+        const delta = chunk.choices?.[0]?.delta?.content;
+        if (delta) {
+          fullText += delta;
+          onDelta(fullText);
+        }
+      } catch {
+        // skip malformed chunks
+      }
+    }
+  }
+
+  return fullText;
+}
+
+async function generateImage(prompt, model, key) {
+  const res = await fetch(apiUrl('/v1/images/generations'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + key,
+    },
+    body: JSON.stringify({ prompt, model, size: '1024x1024' }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || err.error || 'API Error');
+  }
+
+  const data = await res.json();
+  const b64 = data.data?.[0]?.b64_json;
+  if (!b64) throw new Error('No image in response');
+
+  const url = `data:image/png;base64,${b64}`;
+  appendImageMessage(url, model);
+}
+
+async function generateTextStream(prompt, model, key) {
+  conversation.push({ role: 'user', content: prompt });
+
+  const res = await fetch(apiUrl('/v1/chat/completions'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + key,
+    },
+    body: JSON.stringify({
+      model,
+      messages: conversation,
+      stream: true,
+    }),
+  });
+
+  if (!res.ok) {
+    conversation.pop();
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || err.error || 'API Error');
+  }
+
+  const bodyEl = createStreamingTextMessage(model);
+  const fullText = await parseOpenAIStream(res, (text) => {
+    bodyEl.innerHTML = renderMarkdown(text);
+    scrollToBottom();
+  });
+
+  conversation.push({ role: 'assistant', content: fullText });
 }
 
 async function runGenerate() {
@@ -121,29 +223,10 @@ async function runGenerate() {
   btn.disabled = true;
 
   try {
-    const res = await fetch(apiUrl('/generate'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + key,
-      },
-      body: JSON.stringify({ prompt, model, type: mode }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.details || err.error || 'API Error');
-    }
-
-    const modelName = res.headers.get('X-Model') || model;
-
     if (mode === 'text-to-image') {
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      appendImageMessage(url, modelName);
+      await generateImage(prompt, model, key);
     } else {
-      const md = await res.text();
-      appendTextMessage(md, modelName);
+      await generateTextStream(prompt, model, key);
     }
   } catch (err) {
     toast(err.message);
