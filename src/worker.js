@@ -19,6 +19,8 @@ export default {
     }
 
     if (url.pathname === "/v1/models" && request.method === "GET") {
+      const authError = checkAuth(request, env);
+      if (authError) return cors(authError);
       return cors(handleV1Models(request));
     }
 
@@ -45,13 +47,25 @@ export default {
 };
 
 function checkAuth(request, env) {
-  const apiKey = env.API_KEY;
-  if (!apiKey) return null;
-
   const auth = request.headers.get("Authorization");
-  if (auth !== `Bearer ${apiKey}`) {
+  if (!auth?.startsWith("Bearer ")) {
+    return openaiError("Missing Authorization header", 401, "invalid_api_key");
+  }
+
+  const token = auth.slice(7).trim();
+  if (!token) {
     return openaiError("Incorrect API key provided", 401, "invalid_api_key");
   }
+
+  const apiKey = env.API_KEY;
+  if (!apiKey) {
+    return openaiError("API_KEY is not configured on the server", 500, "server_error");
+  }
+
+  if (token !== apiKey) {
+    return openaiError("Incorrect API key provided", 401, "invalid_api_key");
+  }
+
   return null;
 }
 

@@ -13,12 +13,25 @@ function fillSelect(select, models) {
 }
 
 async function loadModels() {
+  const select = document.getElementById('modelSelect');
+  const key = getApiKey();
+  if (!key) {
+    select.innerHTML = '<option value="">请先填写 Token</option>';
+    return;
+  }
+
   try {
-    const res = await fetch(apiUrl(`/v1/models?type=${mode}`));
-    if (!res.ok) throw new Error('Failed to load models');
+    const res = await fetch(apiUrl(`/v1/models?type=${mode}`), {
+      headers: { Authorization: 'Bearer ' + key },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Failed to load models');
+    }
     const { data: models } = await res.json();
-    fillSelect(document.getElementById('modelSelect'), models);
+    fillSelect(select, models);
   } catch (err) {
+    select.innerHTML = '<option value="">加载失败</option>';
     toast('模型加载失败: ' + err.message);
   }
 }
@@ -248,6 +261,10 @@ function autoResizePrompt() {
 }
 
 initShell();
+
+document.querySelectorAll('[data-token-input]').forEach((input) => {
+  input.addEventListener('change', loadModels);
+});
 
 document.querySelectorAll('.seg[data-mode]').forEach(el => {
   el.addEventListener('click', () => setMode(el.dataset.mode));
