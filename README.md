@@ -153,6 +153,9 @@ npm install && npm run dev
 
 Token 填写一次后会保存在 `localStorage`，三个页面共享。
 
+- **PC 端**：在页面右上角 **TOKEN** 输入框填写
+- **移动端**：点击右上角 ☰ 打开侧边栏，在底部 **ACCESS TOKEN** 填写
+
 ## 国内访问说明
 
 国内网络访问 Cloudflare 相关服务时，可能遇到 **慢、超时、pending** 等情况。参考 [cf-proxy](https://github.com/electroluxcode/cf-proxy) 的部署思路，建议如下：
