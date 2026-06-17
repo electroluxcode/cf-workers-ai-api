@@ -194,12 +194,12 @@ for await (const chunk of stream) {
 
 ### 可用模型
 
-完整列表见 [Workers AI Models](https://developers.cloudflare.com/workers-ai/models/)。本项目收录全部 **80 个**官方模型，按类型分组：
+完整列表见 [Workers AI Models](https://developers.cloudflare.com/workers-ai/models/)。本项目收录 **80 个**可用模型（已排除需上传参考图的 img2img / inpainting），按类型分组：
 
 | 类型 | 数量 | 示例 |
 |------|------|------|
 | text-generation | 43 | Llama 4 Scout, Kimi K2.7, GPT-OSS 120B |
-| text-to-image | 11 | FLUX.2 Klein, FLUX.1 Schnell, SDXL |
+| text-to-image | 9 | FLUX.2 Klein, FLUX.1 Schnell, SDXL |
 | text-embeddings | 7 | EmbeddingGemma, BGE-M3, Qwen3 Embedding |
 | automatic-speech-recognition | 5 | Whisper, Deepgram Nova 3 |
 | text-to-speech | 4 | Aura 2, MeloTTS |

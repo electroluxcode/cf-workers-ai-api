@@ -182,16 +182,10 @@ export async function handleImageGenerations(request, client) {
       form.append("prompt", prompt.trim());
       form.append("width", String(width));
       form.append("height", String(height));
-      const formResponse = new Response(form);
       result = await cfAiRun({
         ...client,
         modelId: model.id,
-        input: {
-          multipart: {
-            body: formResponse.body,
-            contentType: formResponse.headers.get("content-type"),
-          },
-        },
+        input: { formData: form },
       });
     } else {
       result = await cfAiRun({ ...client, modelId: model.id, input: { prompt: prompt.trim() } });

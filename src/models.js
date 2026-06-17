@@ -1,7 +1,7 @@
 /**
  * Workers AI 模型目录
  * 参考: https://developers.cloudflare.com/workers-ai/models/
- * 共 80 个官方模型，此处收录全部可用模型
+ * 共 80 个官方模型（已排除需上传图片的 img2img / inpainting）
  */
 
 /** @typedef {{ id: string, name: string, type: string, author: string, description: string, default?: boolean, deprecated?: boolean, beta?: boolean, multipart?: boolean }} Model */
@@ -63,8 +63,6 @@ export const MODELS = [
   { id: "@cf/stabilityai/stable-diffusion-xl-base-1.0", name: "Stable Diffusion XL", type: "text-to-image", author: "Stability.ai", description: "高质量文生图，细节丰富", beta: true },
   { id: "@cf/bytedance/stable-diffusion-xl-lightning", name: "SDXL Lightning", type: "text-to-image", author: "ByteDance", description: "极速 SDXL，几步出图", beta: true },
   { id: "@cf/lykon/dreamshaper-8-lcm", name: "DreamShaper 8 LCM", type: "text-to-image", author: "lykon", description: "写实风格文生图" },
-  { id: "@cf/runwayml/stable-diffusion-v1-5-img2img", name: "SD 1.5 Img2Img", type: "text-to-image", author: "RunwayML", description: "图生图", beta: true },
-  { id: "@cf/runwayml/stable-diffusion-v1-5-inpainting", name: "SD 1.5 Inpainting", type: "text-to-image", author: "RunwayML", description: "局部重绘", beta: true },
 
   // ── Text Embeddings ──────────────────────────────────────────
   { id: "@cf/pfnet/plamo-embedding-1b", name: "PLaMo Embedding 1B", type: "text-embeddings", author: "pfnet", description: "日语文本嵌入" },

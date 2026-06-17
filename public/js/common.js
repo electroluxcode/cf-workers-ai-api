@@ -18,22 +18,33 @@ function accountInputs() {
   return document.querySelectorAll('[data-account-input]');
 }
 
-/** 优先读 input，其次 localStorage */
-export function getApiKey() {
-  for (const input of tokenInputs()) {
+function flushCredentialField(inputs, storageKey) {
+  let value = '';
+  for (const input of inputs) {
     const v = input.value.trim();
-    if (v) return v;
+    if (v) value = v;
   }
-  return localStorage.getItem(TOKEN_KEY) || '';
+  if (!value) {
+    value = localStorage.getItem(storageKey)?.trim() || '';
+  }
+
+  inputs.forEach((input) => {
+    input.value = value;
+  });
+  if (value) localStorage.setItem(storageKey, value);
+  else localStorage.removeItem(storageKey);
+
+  return value;
 }
 
-/** 优先读 input，其次 localStorage */
+/** 优先读所有 input（移动端在后），再 localStorage */
+export function getApiKey() {
+  return flushCredentialField(tokenInputs(), TOKEN_KEY);
+}
+
+/** 优先读所有 input（移动端在后），再 localStorage */
 export function getAccountId() {
-  for (const input of accountInputs()) {
-    const v = input.value.trim();
-    if (v) return v;
-  }
-  return localStorage.getItem(ACCOUNT_KEY) || '';
+  return flushCredentialField(accountInputs(), ACCOUNT_KEY);
 }
 
 /** 组装请求头，与 worker readAuth 对应 */
@@ -49,19 +60,13 @@ export function apiAuthHeaders(extra = {}) {
 function initSyncedField(inputs, storageKey) {
   if (!inputs.length) return;
   const saved = localStorage.getItem(storageKey) || '';
-  const syncAll = (source) => {
-    const v = source.value;
-    inputs.forEach((input) => {
-      if (input !== source) input.value = v;
-    });
-    const trimmed = v.trim();
-    if (trimmed) localStorage.setItem(storageKey, trimmed);
-    else localStorage.removeItem(storageKey);
-  };
+  const persist = () => flushCredentialField(inputs, storageKey);
   inputs.forEach((input) => {
     input.value = saved;
-    input.addEventListener('input', () => syncAll(input));
-    input.addEventListener('change', () => syncAll(input));
+    input.addEventListener('input', persist);
+    input.addEventListener('change', persist);
+    input.addEventListener('blur', persist);
+    input.addEventListener('compositionend', persist);
   });
 }
 
@@ -110,6 +115,8 @@ export function initMobileMenu() {
     document.body.classList.add('menu-open');
   };
   const shut = () => {
+    flushCredentialField(tokenInputs(), TOKEN_KEY);
+    flushCredentialField(accountInputs(), ACCOUNT_KEY);
     menu.classList.remove('open');
     menu.setAttribute('aria-hidden', 'true');
     toggle.setAttribute('aria-expanded', 'false');

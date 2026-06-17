@@ -6,13 +6,13 @@ export async function cfAiRun({ token, accountId, modelId, input = {} }) {
 
   const url = `${CF_API}/accounts/${accountId}/ai/run/${modelId}`;
   const stream = !!input.stream;
-  const { stream: _stream, multipart, ...rest } = input;
+  const { stream: _stream, formData, ...rest } = input;
 
-  const response = multipart
+  const response = formData
     ? await fetch(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: multipart.body,
+        body: formData,
       })
     : await fetch(url, {
         method: "POST",
