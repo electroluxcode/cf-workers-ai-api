@@ -1,4 +1,4 @@
-# 部署指南
+# 部署指南 — cf-workers-ai-api
 
 ## 本地开发
 
@@ -74,3 +74,33 @@ curl -X POST $BASE/generate \
 npx serve public
 # 访问 http://localhost:3000/standalone-demo.html
 ```
+
+## 国内访问
+
+国内用户请优先阅读 [README · 国内访问说明](./README.md#国内访问说明)。要点：
+
+1. **绑定自定义域名**（参考 [cf-proxy DEPLOY.md](https://github.com/electroluxcode/cf-proxy/blob/main/DEPLOY.md)）— 比 `*.workers.dev` 更稳定
+2. **AI 调试走线上** — `npm run deploy` 后用线上 URL 测 `/generate`，本地 dev 易 pending/超时
+3. **可选 cf-proxy** — 无法直连 workers.dev 时，用 cf-proxy 做 `/proxy/<你的-worker>.workers.dev/...` 转发
+
+### 自定义域名（推荐）
+
+1. 域名 Nameserver 指向 Cloudflare
+2. Worker → **Settings** → **Triggers** → **Custom domains** → **Add Custom Domain**
+3. 填写如 `api.example.com`，保持 DNS **Proxied**（橙色云朵）
+4. 部署后访问 `https://api.example.com/demo.html`
+
+### 本地开发（国内网络）
+
+```bash
+# 需能访问 Cloudflare API
+wrangler login
+
+# 推荐：先部署，用线上地址调 AI
+npm run deploy
+
+# 本地仅适合调试静态页 /models（AI 可能超时）
+npm run dev
+```
+
+若 `wrangler dev` 长时间 pending，属 [Workers AI 远程绑定](https://developers.cloudflare.com/workers/development-testing/) 在国内网络下的常见现象，**不是项目配置缺失**，改用线上 Worker 即可。

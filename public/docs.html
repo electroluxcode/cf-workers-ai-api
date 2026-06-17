@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>文档 — CF Neural Gate</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml"/>
+  <title>文档 — cf-workers-ai-api</title>
   <link rel="stylesheet" href="css/theme.css"/>
 </head>
 <body>
   <header class="topbar">
-    <div class="logo"><span class="logo-light">CF</span> <span class="logo-accent">Neural</span></div>
+    <div class="logo"><span class="logo-light">cf-workers-ai</span><span class="logo-accent">-api</span></div>
     <button type="button" class="menu-toggle" aria-label="打开菜单" aria-expanded="false"><span aria-hidden="true">☰</span></button>
     <nav class="nav" aria-label="主导航">
       <a href="index.html">主页</a>
@@ -25,7 +26,7 @@
 
   <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
     <div class="mobile-menu-head">
-      <div class="logo"><span class="logo-light">CF</span> <span class="logo-accent">Neural</span></div>
+      <div class="logo"><span class="logo-light">cf-workers-ai</span><span class="logo-accent">-api</span></div>
       <button type="button" class="menu-close" aria-label="关闭菜单">✕</button>
     </div>
     <nav class="mobile-nav" aria-label="移动端导航">
@@ -78,10 +79,19 @@
     </section>
 
     <section class="doc-section">
+      <h2>国内访问</h2>
+      <p><code>*.workers.dev</code> 在国内可能较慢或不稳定。推荐在 Cloudflare Dashboard 为 Worker <strong>绑定自定义域名</strong>（域名需接入 Cloudflare DNS，保持橙色云朵代理）。步骤参考 <a href="https://github.com/electroluxcode/cf-proxy/blob/main/DEPLOY.md" target="_blank" rel="noopener">cf-proxy 部署指南</a>。</p>
+      <ul>
+        <li><strong>本地 dev pending</strong>：Workers AI 需连接 Cloudflare，国内网络易超时；请 <code>npm run deploy</code> 后用线上地址调试 <code>/generate</code></li>
+        <li><strong>无法访问 workers.dev</strong>：可部署 <a href="https://github.com/electroluxcode/cf-proxy" target="_blank" rel="noopener">cf-proxy</a>，通过 <code>/proxy/&lt;你的-worker&gt;.workers.dev/...</code> 转发</li>
+        <li><strong>静态资源</strong>：字体与样式已本地化，不依赖 Google CDN</li>
+      </ul>
+      <pre id="curl-proxy">curl https://YOUR-PROXY.workers.dev/proxy/YOUR-API.workers.dev/health</pre>
+    </section>
+
+    <section class="doc-section">
       <h2>本地开发</h2>
-      <p>使用 <code>npm run dev</code>（即 <code>wrangler dev --remote</code>）。若出现 <strong>503</strong>，多为 Worker 热重载或远程预览会话中断，刷新页面重试即可；POST 请求在重载期间不会自动重试。</p>
-      <pre>npm run dev</pre>
-      <p>纯本地 Miniflare（无远程 AI）可用 <code>npm run dev:local</code>，但 <code>/generate</code> 可能超时。</p>
+      <p>使用 <code>npm run dev</code> 时 <code>/generate</code> 可能超时，详见项目根目录 <code>DEPLOY.md</code>。</p>
     </section>
   </main>
 

@@ -1,4 +1,4 @@
-# Free CF API
+# cf-workers-ai-api
 
 基于 [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/) 的免费 AI API，支持文生图与文本生成（Markdown 输出）。
 
@@ -126,7 +126,7 @@ curl -X POST https://<your-worker>.workers.dev/generate \
 ## 项目结构
 
 ```
-free-cf-api/
+cf-workers-ai-api/
 ├── public/
 │   ├── index.html          # 主页
 │   ├── docs.html           # 文档
@@ -145,8 +145,6 @@ free-cf-api/
 
 ## 页面
 
-布局参考 [Nth Me AI 工坊](https://www.nthme.org/portal)：顶部导航（主页 / 文档 / 示例）+ 右上角 Token，示例页为左侧控制面板、右侧输出区。
-
 本地开发：
 
 ```bash
@@ -154,6 +152,68 @@ npm install && npm run dev
 ```
 
 Token 填写一次后会保存在 `localStorage`，三个页面共享。
+
+## 国内访问说明
+
+国内网络访问 Cloudflare 相关服务时，可能遇到 **慢、超时、pending** 等情况。参考 [cf-proxy](https://github.com/electroluxcode/cf-proxy) 的部署思路，建议如下：
+
+### 1. 绑定自定义域名（推荐）
+
+`*.workers.dev` 在国内可能不稳定。**推荐在 Cloudflare Dashboard 为 Worker 绑定自定义域名**，通常比默认 workers.dev 地址更可用。
+
+1. 将域名接入 [Cloudflare DNS](https://dash.cloudflare.com/)（Nameserver 指向 Cloudflare）
+2. 进入 Worker → **Settings** → **Triggers** → **Custom domains**
+3. 点击 **Add Custom Domain**，例如 `api.example.com`
+4. 确认 DNS 记录为**已代理**（橙色云朵 ☁️）
+5. 等待 1–2 分钟 DNS 生效后，用 `https://api.example.com/` 访问主页与 API
+
+详细步骤可参考 [cf-proxy 部署指南 · 配置自定义域名](https://github.com/electroluxcode/cf-proxy/blob/main/DEPLOY.md#步骤-3-配置自定义域名可选)。
+
+### 2. 本地开发
+
+| 现象 | 原因 | 建议 |
+|------|------|------|
+| `wrangler login` 失败 | 无法访问 `dash.cloudflare.com` / `api.cloudflare.com` | 使用稳定网络或代理后再登录 |
+| `npm run dev` 页面 pending | 远程预览需连接 Cloudflare | 先 `npm run deploy`，用**线上地址**调试 |
+| `POST /generate` 超时 / 503 | Workers AI 远程绑定在本地易超时 | **文生图等 AI 请求请走线上 Worker**，本地只调 UI |
+
+本地调试 AI 的推荐流程：
+
+```bash
+wrangler login
+npm run deploy
+# 浏览器打开 https://<你的域名或 workers.dev>/demo.html
+# 右上角填入 API_KEY，直接调用线上 /generate
+```
+
+静态资源（字体、CSS、JS）已托管在 `public/`，**不依赖 Google Fonts**，国内可正常加载。
+
+### 3. 通过 cf-proxy 反向代理（可选）
+
+若 `*.workers.dev` 无法直接访问，可另部署一个 [cf-proxy](https://github.com/electroluxcode/cf-proxy) Worker，将本 API 代理出去：
+
+```bash
+# 健康检查
+curl https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/health
+
+# 模型列表
+curl https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/models
+
+# 文生图（注意路径拼接）
+curl -X POST "https://<你的-proxy>.workers.dev/proxy/<你的-api>.workers.dev/generate" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"a cat","type":"text-to-image"}' \
+  -o out.jpg
+```
+
+也可在 `standalone-demo.html` 的 **NODE** 字段填入代理后的地址。
+
+### 4. 故障排查
+
+- **部署后无法访问**：等待 DNS 传播，清除缓存或用无痕模式重试（cf-proxy FAQ 同类问题）
+- **自定义域名失败**：确认域名在 Cloudflare 托管、DNS 为橙色云朵
+- **仅 AI 接口失败**：检查 Workers AI 绑定与 `API_KEY` 是否一致；优先用线上环境验证
 
 ## 参考
 

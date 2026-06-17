@@ -1,5 +1,5 @@
 {
-  "name": "cf-neural-free-api",
+  "name": "cf-workers-ai-api",
   "private": true,
   "scripts": {
     "dev": "wrangler dev --remote",

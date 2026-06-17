@@ -1,4 +1,4 @@
-const TOKEN_KEY = 'cf-neural-token';
+const TOKEN_KEY = 'cf-workers-ai-api-token';
 
 export function toast(msg) {
   const el = document.createElement('div');
