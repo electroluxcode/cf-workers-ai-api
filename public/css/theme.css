@@ -638,6 +638,11 @@ pre {
   min-height: 0;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.chat-messages::-webkit-scrollbar {
+  display: none;
 }
 .chat-messages > * {
   flex-shrink: 0;
