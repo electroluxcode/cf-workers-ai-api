@@ -29,7 +29,7 @@ Authorization: Bearer <Cloudflare API Token>
 Worker 读取请求头，自动解析 Account ID，转发 Workers AI REST API
 ```
 
-Worker 不读 env 密钥；Account ID 由 Token 自动解析（`GET /accounts`），**用户无需填写**。
+Worker 不读 env 密钥；Account ID 优先从 Token 自动解析（`/accounts` 或 `/memberships`）。若 Token 仅有 Workers AI 权限（Dashboard 创建的 `cfut_` Token 常见情况），则回退到 Worker 绑定的 **Workers AI** 执行（需部署时启用 AI binding）。
 
 ### 用户如何获取 Token
 

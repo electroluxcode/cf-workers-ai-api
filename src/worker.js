@@ -27,19 +27,19 @@ export default {
     if (url.pathname === "/v1/chat/completions" && request.method === "POST") {
       const auth = requireUserToken(request);
       if (auth.error) return cors(auth.error);
-      return cors(await handleChatCompletions(request, auth.token));
+      return cors(await handleChatCompletions(request, auth.token, env));
     }
 
     if (url.pathname === "/v1/responses" && request.method === "POST") {
       const auth = requireUserToken(request);
       if (auth.error) return cors(auth.error);
-      return cors(await handleResponses(request, auth.token));
+      return cors(await handleResponses(request, auth.token, env));
     }
 
     if (url.pathname === "/v1/images/generations" && request.method === "POST") {
       const auth = requireUserToken(request);
       if (auth.error) return cors(auth.error);
-      return cors(await handleImageGenerations(request, auth.token));
+      return cors(await handleImageGenerations(request, auth.token, env));
     }
 
     return env.ASSETS.fetch(request);
